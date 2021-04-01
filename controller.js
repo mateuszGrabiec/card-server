@@ -21,7 +21,7 @@ class Controller {
 			return await userService.getById(id);
 		});
 		this.app = express();
-		this.clientPath=`${__dirname}/public`;// deklaracja ścieżki klienta
+		this.clientPath=`${__dirname}/public`;
 		console.log(`Serving static from ${this.clientPath}`);
 		this.app.use(express.static(this.clientPath));
 		this.app.use( bodyParser.json() );
@@ -30,11 +30,12 @@ class Controller {
 		}));
 		this.app.set('view-engine','ejs');
 		this.app.use(flash());
-		this.app.use(session({
+		this.sessionMiddleware=session({
 			secret: 'XD',//process.env.SESSION_SECRET
 			resave: true,
 			saveUninitialized: true
-		}));
+		});
+		this.app.use(this.sessionMiddleware);
 		this.app.use(passport.initialize());
 		this.app.use(passport.session());
 		this.app.options('*', cors());
@@ -44,10 +45,22 @@ class Controller {
 			cors: {
 				origin: 'http://localhost:8080',
 				methods: ['GET', 'POST'],
-				// allowedHeaders: ['my-custom-header'],
 				credentials: true
 			}
 		});
+		// convert a connect middleware to a Socket.IO middleware
+		const wrap = middleware => (socket, next) => middleware(socket.request, {}, next);
+		this.io.use(wrap(this.sessionMiddleware));
+		this.io.use(wrap(passport.initialize()));
+		this.io.use(wrap(passport.session()));
+		this.io.use((socket, next) => {
+			if (socket.request.user) {
+				next();
+			} else {
+				next(new Error('unauthorized'));
+			}
+		});
+
 		this.handleRoutes();
 		this.handleSocketConnection();
 		this.table=new Table();
@@ -96,13 +109,12 @@ class Controller {
 			const cards = await cardService.getCards();
 			res.send({body:cards});
 		});
-		this.app.get('/admin/login',function(req, res){
-			// res.send('Hello world!!');
+		this.app.get('/login',function(req, res){
 			res.render('login.ejs');
 		});
-		this.app.post('/admin/login',passport.authenticate('local',{
-			successRedirect: 'http://localhost:8080/',
-			failureRedirect: '/admin/login',
+		this.app.post('/login',passport.authenticate('local',{
+			successRedirect: '/game',
+			failureRedirect: '/login',
 			failureFlash:true
 		}));
 	}
@@ -111,6 +123,7 @@ class Controller {
 		this.io.on('connection', (socket) => {
 
 			console.log('A user connected: ' + socket.id);
+			console.log(socket?.request?.user);
 
 			this.io.emit('connected');
 
