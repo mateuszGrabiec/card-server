@@ -6,16 +6,15 @@ module.exports = {
 	createUser: async (user)=>{
 		// console.log(user);
 		if(user?.password?.length < 8){
-			throw {message:'Password is to short'};
+			throw {message:'Password is to short should be at least 8 characters'};
 		}
 		const newUser = new User({
 			_id: new moongosee.Types.ObjectId(),
 			username: user.username,
-			password: await bcrypt.hash(user.password,10),
+			password: await bcrypt.hash(user.password,parseInt(process.env.NUM_HASH)),
 			emailAddress: user.emailAddress
 		});
 		const createdUser = newUser.save().then(result=>{
-			// console.log(result);
 			return result;
 		});
 		return createdUser;
@@ -31,5 +30,5 @@ module.exports = {
 			return user;
 		}) || false;
 		return user;
-	},
+	}
 };

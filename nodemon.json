@@ -4,6 +4,9 @@
         "MONGO_PW": "admin",
         "MONGO_ADDRESS":"127.0.0.1",
         "MONGO_DBNAME":"card-game",
-        "NODEENV":"DEV"
+        "NODEENV":"DEV",
+        "NUM_HASH":"8",
+        "SESSION_SECRET":"shhh",
+        "DEV_CLIENT":"http://localhost:8080"
     }
 }

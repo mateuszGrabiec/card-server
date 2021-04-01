@@ -31,7 +31,7 @@ class Controller {
 		this.app.set('view-engine','ejs');
 		this.app.use(flash());
 		this.sessionMiddleware=session({
-			secret: 'XD',//process.env.SESSION_SECRET
+			secret: process.env.SESSION_SECRET,
 			resave: true,
 			saveUninitialized: true
 		});
@@ -43,7 +43,7 @@ class Controller {
 		this.httpServer = http.createServer(this.app);
 		this.io = socketIO(this.httpServer,{
 			cors: {
-				origin: 'http://localhost:8080',
+				origin: process.env.DEV_CLIENT || '',
 				methods: ['GET', 'POST'],
 				credentials: true
 			}
@@ -71,25 +71,38 @@ class Controller {
 			res.send('Hello world!!!1231231245');
 		});
 		this.app.get('/profile',function(req, res){
-			// res.send('Hello world!!');
-			console.log(req.user);
 			res.render('profile.ejs',{name: req?.user?.username});
 		});
 
+		this.app.get('/register',function(req, res){
+			//TODO Check is already logged
+			res.render('register.ejs');
+		});
+
 		this.app.post('/register',async(req, res) => {
-			// console.log(req.body);
 			try{
-				const user = {
+				const newUser = {
 					username:req.body.username,
 					password: req.body.password,
 					emailAddress:req.body.emailAddress
 				};
-				const out = await userService.createUser(user);
-				console.log(out);
-				res.send(user);
+				const user = await userService.createUser(newUser);
+				req.login(user, function(err) {
+					if (err) {
+						res.render('register.ejs',{error:err});
+					}
+					return res.redirect('/profile');
+				});
 			}catch(err){
-				res.status(400);
-				res.send({error:err});
+				console.log(err);
+				let errMessage='Unexpected Error';
+				if(err.name === 'MongoError' && err.code === 11000){
+					let duplicatedKeys = Object.keys(err.keyValue);
+					errMessage = duplicatedKeys?.[0] ? `User with this ${duplicatedKeys[0]} already exist` : errMessage;
+				}else{
+					errMessage=err.message;
+				}
+				res.render('register.ejs',{error:errMessage});
 			}
 		});
 		this.app.get('/card',async(req, res)=>{
@@ -121,9 +134,6 @@ class Controller {
 
 	handleSocketConnection() {
 		this.io.on('connection', (socket) => {
-
-			console.log('A user connected: ' + socket.id);
-			console.log(socket?.request?.user);
 
 			this.io.emit('connected');
 
