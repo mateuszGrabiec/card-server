@@ -55,7 +55,7 @@ class Controller {
 
 	handleRoutes() {
 		this.app.get('/',function(req, res){
-			res.send('Hello world!!!');
+			res.send('Hello world!!!123');
 		});
 		this.app.get('/profile',function(req, res){
 			// res.send('Hello world!!');
