@@ -1,0 +1,11 @@
+<h1>Login</h1>
+<% if (messages.error) { %>
+    <%= messages.error %>
+  <% } %>
+<form action="/admin/login" method="POST">
+    <label for="emailAddress">E-mail address</label>
+    <input type="email" name="emailAddress" id="emailAddress" value="mateuszgrabiec7@gmail.com" required><br>
+    <label for="password">Password</label>
+    <input type="password" name="password" id="password" value="jebacspirng" required><br>
+    <button type="submit">Login</button>
+</form>
