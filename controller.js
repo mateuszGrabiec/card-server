@@ -57,6 +57,7 @@ class Controller {
 			if (socket.request.user) {
 				next();
 			} else {
+				socket.disconnect();
 				next(new Error('unauthorized'));
 			}
 		});
@@ -126,7 +127,7 @@ class Controller {
 			res.render('login.ejs');
 		});
 		this.app.post('/login',passport.authenticate('local',{
-			successRedirect: '/game',
+			successRedirect: process.env.NODEENV === 'prod' ? '/game':process.env.DEV_CLIENT,
 			failureRedirect: '/login',
 			failureFlash:true
 		}));
@@ -135,10 +136,13 @@ class Controller {
 	handleSocketConnection() {
 		this.io.on('connection', (socket) => {
 
-			this.io.emit('connected');
+			// console.log('connected',socket.id);
+			// console.log(!socket?.request?.user);
+
+			socket.emit('hello');
 
 			socket.on('getTable',()=>{
-				this.io.emit('sendTable',this.table.table);
+				socket.emit('sendTable',this.table.table);
 			});
             
 			socket.on('put', (clientData) => {
