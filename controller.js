@@ -33,7 +33,8 @@ class Controller {
 		this.sessionMiddleware=session({
 			secret: process.env.SESSION_SECRET,
 			resave: true,
-			saveUninitialized: true
+			saveUninitialized: true,
+			cookie: { maxAge: 60000 }
 		});
 		this.app.use(this.sessionMiddleware);
 		this.app.use(passport.initialize());
