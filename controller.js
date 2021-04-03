@@ -7,6 +7,8 @@ const flash = require('express-flash');
 const session = require('express-session');
 const cors = require('cors');
 const hbs = require('express-handlebars');
+const {allowInsecurePrototypeAccess} = require('@handlebars/allow-prototype-access');
+const Handlebars = require('handlebars');
 
 const userService = require('./services/userService');
 const cardService = require('./services/cardService');
@@ -36,7 +38,7 @@ class Controller {
 		this.app.use(express.static(this.clientPath));
 		
 		//view-engine
-		this.app.engine('hbs', hbs({extname: 'hbs', defaultLayout: 'layout', layoutsDir: __dirname + '/views/layouts/'}));
+		this.app.engine('hbs', hbs({handlebars: allowInsecurePrototypeAccess(Handlebars), extname: 'hbs', defaultLayout: 'layout', layoutsDir: __dirname + '/views/layouts/'}));
 		//TODO get all subfolders and map
 		this.app.set('views',`${__dirname}/views`);
 		this.app.set('view engine','hbs');
@@ -89,6 +91,17 @@ class Controller {
 		this.handleRoutes();
 		this.handleSocketConnection();
 		this.table=new Table();
+
+		// ADD card to user by id
+		//60660719b327566a8d1ee23a
+		// cardService.getCards().then(cards=>{
+		// 	console.log(cards?.length);
+		// 	userService.updateCards('60660719b327566a8d1ee23a',cards)
+		// 		.then(result=>{
+		// 			console.log(result);
+		// 		});
+		// });
+
 	}
 
 	handleRoutes() {

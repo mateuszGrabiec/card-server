@@ -24,5 +24,11 @@ module.exports = {
 			return cards;
 		}) || [];
 		return cards;
+	},
+	getFreeCards: async()=>{
+		const cards = await Card.find({isFree:true}, function (err, cards) {
+			return cards;
+		}) || [];
+		return cards;
 	}
 };

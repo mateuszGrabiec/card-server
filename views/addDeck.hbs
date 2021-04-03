@@ -1,1 +1,19 @@
 <h1>Add deck</h1>
+{{#if cards}}
+    <div>
+        <form action="/decks/add" method="POST">
+            <label for="name">Deck Name</label>
+            <input type="text" name="name" id="name" required><br>
+        <p>Your cards:</p>
+        {{# each cards as |val key|}}
+            {{!-- {{ val }} --}}
+            <div>
+                <input type="checkbox" name="cards" value="{{ val.id }}" id="{{ val.id }}" ><br>
+                <img with="50" height="50" src="{{ val.image }}">
+            </div>
+            {{!-- {{key}} : {{val}} --}}
+        {{/each}}
+        <button type="submit">Login</button>
+        </form>
+    </div>
+{{/if}}

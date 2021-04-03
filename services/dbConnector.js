@@ -9,7 +9,7 @@ const connetionString = process.env.NODEENV==='PROD' ?
 module.exports = {
 	initConnection: (callback) => {
 		console.info('Trying to reach database');
-		mongoose.connect(connetionString,{ useNewUrlParser: true, useUnifiedTopology:true, useCreateIndex: true, });
+		mongoose.connect(connetionString,{ useNewUrlParser: true, useUnifiedTopology:true, useCreateIndex: true, useFindAndModify: false});
 		const db = mongoose.connection;
 		db.on('error', function (err) {
 			console.error('Failed to connect to database',err);

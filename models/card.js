@@ -11,6 +11,7 @@ const cardSchema = moongosee.Schema({
 	y:Number,
 	shield:Number,
 	onPutTrigger:Boolean,
+	isFree:Boolean
 });
 
 module.exports = moongosee.model('Card',cardSchema);
