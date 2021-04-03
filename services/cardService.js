@@ -3,7 +3,6 @@ const moongosee = require('mongoose');
 
 module.exports = {
 	createCard: async (card)=>{
-		// console.log(user);
 		const newCard = new Card({
 			_id: new moongosee.Types.ObjectId(),
 			power:card.power,
@@ -14,6 +13,7 @@ module.exports = {
 			y:card.y,
 			shield:card.shield,
 			onPutTrigger:card.onPutTrigger,
+			isFree: card.isFree
 		});
 		newCard.save().then(result=>{
 			console.log(result);

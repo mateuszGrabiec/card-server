@@ -1,0 +1,15 @@
+<h1>
+    {{title}}
+</h1>
+<div>
+    <a href="/decks/add">Create new deck</a>
+</div>
+{{#if decks}}
+    <div>
+        <p>Your decks:</p>
+        {{# each decks as |val key|}}
+            {{!-- {{ this }} --}}
+            {{key}} : {{val}}
+        {{/each}}
+    </div>
+{{/if}}

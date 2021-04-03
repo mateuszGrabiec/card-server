@@ -30,6 +30,10 @@ const userSchema = moongosee.Schema({
 		type:String,
 		required: [true, 'Password required'],
 	},
+	cards:[{
+		type:moongosee.Schema.Types.ObjectId,
+		ref:'Card'
+	}],
 });
 
 module.exports = moongosee.model('User',userSchema);
