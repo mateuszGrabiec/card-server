@@ -40,6 +40,6 @@ module.exports = {
 	},
 	getUserCards: async(id)=>{
 		const result = await User.findOne({_id:id}).populate('cards');
-		return result.cards;
+		return result.cards || [];
 	}
 };
