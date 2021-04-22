@@ -8,12 +8,15 @@ const deckSchema = moongosee.Schema({
 	},
 	cards:[{
 		type:moongosee.Schema.Types.ObjectId,
-		validate: {
-			validator: function(v) {
-				return v?.length > 14 && v?.length < 31;
-			},
-			message: props => `${props.value.length} this nums of card is `
-		},
+		// TODO VALIDATE LENGTH
+		// validate: {
+		// 	validator: function(v) {
+		// 		console.log('value',v);
+		// 		return true;
+		// 		// return v?.length > 3 && v?.length < 31;
+		// 	},
+		// 	message: props => `${props.value.length} this nums of card is `
+		// },
 		ref:'Card',
 		require:true
 	}],
@@ -21,6 +24,9 @@ const deckSchema = moongosee.Schema({
 		type:moongosee.Schema.Types.ObjectId,
 		ref:'User',
 		require:true
+	},
+	isCurrent:{
+		type:Boolean
 	}
 });
 

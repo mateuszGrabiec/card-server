@@ -1,5 +1,7 @@
+const deckService = require('../../services/deckService');
 module.exports = function(app,endpoint){
-	app.get(endpoint,function(req,res){
-		res.render('decks',{title:'Decks',decks:[]});
+	app.get(endpoint,async function(req,res){
+		const decks = await deckService.getDecks(req?.user) || [];
+		res.render('decks',{title:'Decks',decks});
 	});
 };

@@ -5,13 +5,25 @@
     <div>
         <a class="btn btn-warning" href="/decks/add">Create new deck</a>
     </div>
+    {{#if error}}
+        <div class="alert alert-danger">{{error}}</div>
+    {{/if}}
     {{#if decks}}
         <div>
             <p>Your decks:</p>
             {{# each decks as |val key|}}
                 {{!-- {{ this }} --}}
-                {{key}} : {{val}}
+                {{key}} : {{val.name}}
             {{/each}}
+            <form action="/decks/current" method="POST">
+                <label for="cars">Choose current deck:</label>
+                <select name="deck" id="deck">
+                    {{#each decks}} 
+                     <option value='{{id}}'>{{name}}</option> 
+                    {{/each}}
+                </select>
+                <input type="submit" value="Save Deck">
+            </form>
         </div>
     {{/if}}
 </div>

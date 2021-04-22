@@ -1,7 +1,6 @@
 const User = require('../models/user');
 const moongosee = require('mongoose');
 const bcrypt = require('bcrypt');
-const cardService = require('./cardService');
 
 module.exports = {
 	createUser: async (user)=>{
@@ -33,13 +32,11 @@ module.exports = {
 		return user;
 	},
 	updateCards: async(id,cards)=>{
-		//60266965039b283fe9e18527
-		// const result = await User.findOneAndUpdate({_id:id}, {cards:['60266965039b283fe9e18527']});
 		const result = await User.findOneAndUpdate({_id:id}, cards);
 		return result;
 	},
 	getUserCards: async(id)=>{
 		const result = await User.findOne({_id:id}).populate('cards');
-		return result.cards || [];
+		return result?.cards || [];
 	}
 };

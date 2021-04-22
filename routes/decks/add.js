@@ -1,13 +1,12 @@
 const cardService = require('../../services/cardService');
 const userService = require('../../services/userService');
+const deckService = require('../../services/deckService');
 module.exports = function(app,endpoint){
 
 	//GET
 	app.get(endpoint,async function(req,res){
-		// console.log(req?.user?.id);
-		let userId = '60660719b327566a8d1ee23a';
 		const cards = await cardService.getCards();
-		const userCards = await userService.getUserCards(userId);
+		const userCards = await userService.getUserCards(req?.user?.id) || [];
 		let availableCards =[];
 		cards.map(card=>{
 			if(card.isFree){
@@ -23,19 +22,14 @@ module.exports = function(app,endpoint){
 	});
 
 	//POST
-	app.post(endpoint,function(req,res){
-		//TODO trey catch and send error to front
-		console.log(req?.user);
-		console.log(req.body);
-		//example data:
-		// {
-		// 	name: 'card-game',
-		// 	cards: [
-		// 	  '60266965039b283fe9e18527',
-		// 	  '60266965039b283fe9e18528',
-		// 	  '60266965039b283fe9e18529'
-		// 	]
-		//   }
-		res.render('addDeck',{title:'Create new deck',cards:[]});
+	app.post(endpoint,async function(req,res){
+		try{
+			await deckService.createDeck(req.user,req.body);
+			res.redirect('/decks');
+		}catch(err){
+			console.log('Deck Err',err);
+			const decks = await deckService.getDecks(req?.user) || [];
+			res.render('decks',{title:'Decks',decks,error:err});
+		}
 	});
 };

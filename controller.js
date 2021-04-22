@@ -11,7 +11,6 @@ const {allowInsecurePrototypeAccess} = require('@handlebars/allow-prototype-acce
 const Handlebars = require('handlebars');
 
 const userService = require('./services/userService');
-const cardService = require('./services/cardService');
 const Table = require('./services/tableService');
 
 class Controller {
@@ -31,11 +30,6 @@ class Controller {
 		this.app.use(express.urlencoded({
 			extended: true
 		}));
-
-		//serving files
-		this.clientPath=`${__dirname}/public`;
-		console.log(`Serving static from ${this.clientPath}`);
-		this.app.use(express.static(this.clientPath));
 		
 		//view-engine
 		this.app.engine('hbs', hbs({handlebars: allowInsecurePrototypeAccess(Handlebars), extname: 'hbs', defaultLayout: 'layout', layoutsDir: __dirname + '/views/layouts/'}));
@@ -54,6 +48,7 @@ class Controller {
 		this.app.use(this.sessionMiddleware);
 		this.app.use(passport.initialize());
 		this.app.use(passport.session());
+		this.app.use(this.checkAuthenticated);
 		
 		//initialize sever
 		this.httpServer = http.createServer(this.app);
@@ -90,6 +85,12 @@ class Controller {
 		//config routes
 		this.handleRoutes();
 		this.handleSocketConnection();
+
+		//serving files
+		this.clientPath=`${__dirname}/public`;
+		console.log(`Serving static from ${this.clientPath}`);
+		this.app.use(express.static(this.clientPath));
+
 		this.table=new Table();
 
 		// ADD card to user by id
@@ -106,14 +107,19 @@ class Controller {
 
 	handleRoutes() {
 		require('./routes')(this.app);
-		// this.app.get('/login',function(req, res){
-		// 	res.render('login.ejs');
-		// });
-		// this.app.post('/login',passport.authenticate('local',{
-		// 	successRedirect: process.env.NODEENV === 'prod' ? '/game':process.env.DEV_CLIENT,
-		// 	failureRedirect: '/login',
-		// 	failureFlash:true
-		// }));
+	}
+
+	checkAuthenticated(req,res,next){
+		if(req.url=='/login' || req.url=='/' || req.url=='/register'){
+			return next();
+		}
+		if(process.env?.NODEENV=='DEV' && req.url=='/card'){
+			return next();
+		}
+		if(req.isAuthenticated()){
+			return next();
+		}
+		res.redirect('/login');
 	}
 
 	handleSocketConnection() {

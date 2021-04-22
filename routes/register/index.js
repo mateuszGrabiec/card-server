@@ -9,7 +9,6 @@ module.exports = function(app,endpoint){
 
 	//POST
 	app.post(endpoint,async(req, res) => {
-		console.log(req?.username);
 		try{
 			const newUser = {
 				username:req.body.username,

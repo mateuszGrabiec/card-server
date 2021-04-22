@@ -9,8 +9,6 @@ async function initialize(passport,getUserByEmail, getUserById){
 			return done(null,false, {message:'NO user with that email'});
 		}
 
-		console.log(user);
-
 		try{
 			if(await bcrypt.compare(password,user.password)){
 				return done(null, user);
