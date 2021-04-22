@@ -1,13 +1,16 @@
-<h1>{{title}}</h1>
-{{#if error}}
-    {{error}}
-{{/if}}
-<form action="/register" method="POST">
-    <label for="username">Username</label>
-    <input type="text" name="username" id="username" required><br>
-    <label for="emailAddress">E-mail address</label>
-    <input type="email" name="emailAddress" id="emailAddress" required><br>
-    <label for="password">Password</label>
-    <input type="password" name="password" id="password" required><br>
-    <button type="submit">Register</button>
-</form>
+
+<div class="container w-50 text-center">
+    <h1>{{title}}</h1>
+    {{#if error}}
+        {{error}}
+    {{/if}}
+    <form action="/register" method="POST">
+        <label for="username">Username</label>
+        <input class="form-control" type="text" name="username" id="username" required><br>
+        <label for="emailAddress">E-mail address</label>
+        <input class="form-control" type="email" name="emailAddress" id="emailAddress" required><br>
+        <label for="password">Password</label>
+        <input class="form-control" type="password" name="password" id="password" required><br>
+        <button class="btn btn-primary" type="submit">Register</button>
+    </form>
+</div>
