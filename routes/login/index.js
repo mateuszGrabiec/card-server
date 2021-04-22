@@ -9,7 +9,7 @@ module.exports = function(app,endpoint){
 
 	//POST
 	app.post(endpoint,passport.authenticate('local',{
-		successRedirect: process.env.NODEENV === 'prod' ? '/game':process.env.DEV_CLIENT,
+		successRedirect: process.env.NODEENV === 'PROD' ? '/game':process.env.DEV_CLIENT,
 		failureRedirect: '/login',
 		failureFlash:true
 	}));
