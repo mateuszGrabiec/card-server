@@ -7,6 +7,6 @@
         "NODEENV":"DEV",
         "NUM_HASH":"8",
         "SESSION_SECRET":"shhh",
-        "DEV_CLIENT":"http://localhost:8080"
+        "DEV_CLIENT":"localhost:8080"
     }
 }
