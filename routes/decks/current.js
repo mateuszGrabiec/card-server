@@ -7,7 +7,12 @@ module.exports = function(app,endpoint){
 	});
 
 	app.get(endpoint,async function(req,res){
-		const deck = await deckService.getCurrent(req?.user) || false;
-		res.send(deck);
+		if(req?.user){
+			console.log('in');
+			const deck = await deckService.getCurrent(req?.user) || false;
+			res.send({body:{deck:deck}});
+		}else{
+			res.sendStatus(403);//.send({body:{error:'Access Denied'}});
+		}
 	});
 };

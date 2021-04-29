@@ -1,6 +1,7 @@
 const cardService = require('../../services/cardService');
 module.exports= function(app,ednpoint){
 	app.get(ednpoint,async(req, res)=>{
+		// console.log('user',req?.user?.username);
 		// console.log(req.body);
 		// for(let i=0;i<5;i++){
 		// 	await cardService.createCard({

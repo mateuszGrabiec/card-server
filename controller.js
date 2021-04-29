@@ -5,7 +5,6 @@ const passport = require('passport');
 const initializePassport = require('./passport-config');
 const flash = require('express-flash');
 const session = require('express-session');
-const cors = require('cors');
 const hbs = require('express-handlebars');
 const {allowInsecurePrototypeAccess} = require('@handlebars/allow-prototype-access');
 const Handlebars = require('handlebars');
@@ -25,6 +24,22 @@ class Controller {
 
 		//
 		this.app = express();
+
+		if(process.env.NODEENV=='DEV'){
+			// this.app.use(cors());
+			console.log();
+			this.app.use(function(req, res, next) {
+				res.header('Access-Control-Allow-Credentials', true);
+				res.header('Access-Control-Allow-Origin', req.headers.origin);
+				res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+				res.header('Access-Control-Allow-Headers', 'X-Requested-With, X-HTTP-Method-Override, Content-Type, Accept');
+				if ('OPTIONS' == req.method) {
+					res.sendStatus(200);
+				} else {
+					next();
+				}
+			});
+		}
 
 		this.app.use(express.json());
 		this.app.use(express.urlencoded({
@@ -54,8 +69,7 @@ class Controller {
 		this.httpServer = http.createServer(this.app);
 
 		//Enalble cors to deveploment
-		if(process.env.NODEENV=='DEV'){
-			this.app.use(cors());
+		if(process.env.NODEENV=='DEV'){			
 			this.io = socketIO(this.httpServer,{
 				cors: {
 					origin: process.env.DEV_CLIENT || '',
@@ -110,7 +124,7 @@ class Controller {
 	}
 
 	checkAuthenticated(req,res,next){
-		if(req.url=='/login' || req.url=='/' || req.url=='/register'){
+		if(req.url=='/login' || req.url=='/' || req.url=='/register' || req.url=='/deck/current'){
 			return next();
 		}
 		if(process.env?.NODEENV=='DEV' && req.url=='/card'){
@@ -126,7 +140,7 @@ class Controller {
 		this.io.on('connection', (socket) => {
 
 			// console.log('connected',socket.id);
-			// console.log(!socket?.request?.user);
+			console.log(socket?.request?.user);
 
 			socket.emit('hello');
 
@@ -134,7 +148,7 @@ class Controller {
 				socket.emit('sendTable',this.table.table);
 			});
             
-			socket.on('put', (clientData) => {
+			socket.on('', (clientData) => {
 				this.table.putCard(clientData);
 				socket.emit('sendTable',this.table);
 			});
