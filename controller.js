@@ -148,7 +148,7 @@ class Controller {
 				socket.emit('sendTable',this.table.table);
 			});
             
-			socket.on('', (clientData) => {
+			socket.on('put', (clientData) => {
 				this.table.putCard(clientData);
 				socket.emit('sendTable',this.table);
 			});
