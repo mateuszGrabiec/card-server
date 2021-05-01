@@ -30,5 +30,9 @@ module.exports = {
 			return cards;
 		}) || [];
 		return cards;
+	},
+	getCardById: async(id)=>{
+		const card = await Card.findOne({_id:id}) || false;
+		return card;
 	}
 };
