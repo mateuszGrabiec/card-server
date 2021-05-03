@@ -10,7 +10,7 @@ const {allowInsecurePrototypeAccess} = require('@handlebars/allow-prototype-acce
 const Handlebars = require('handlebars');
 
 const userService = require('./services/userService');
-const Table = require('./services/tableService');
+const tableService = require('./services/tableService');
 
 class Controller {
 
@@ -105,8 +105,6 @@ class Controller {
 		console.log(`Serving static from ${this.clientPath}`);
 		this.app.use(express.static(this.clientPath));
 
-		this.table=new Table();
-
 		// ADD card to user by id
 		//60660719b327566a8d1ee23a
 		// cardService.getCards().then(cards=>{
@@ -137,24 +135,39 @@ class Controller {
 	}
 
 	handleSocketConnection() {
-		this.io.on('connection', (socket) => {
+		this.io.on('connection', async (socket) => {
+
+			await tableService.addPlayer(socket?.request?.user,socket.id);
 
 			// console.log('connected',socket.id);
-			console.log(socket?.request?.user);
+			// console.log(socket?.request?.user);
 
 			socket.emit('hello');
 
-			socket.on('getTable',()=>{
-				socket.emit('sendTable',this.table.table);
+			socket.on('getTable',async()=>{
+				const lines = await tableService.getLines(socket?.request?.user?._id);
+				socket.emit('sendTable',lines);
 			});
             
-			socket.on('put', (clientData) => {
-				this.table.putCard(clientData);
-				socket.emit('sendTable',this.table);
+			socket.on('put', async(clientData) => {
+				await tableService.putCard(clientData,socket?.request?.user);
+				const lines = await tableService.getLines(socket?.request?.user?._id);
+				const table = await tableService.getTable(socket?.request?.user);
+				if(table.playerOneSocket==socket.id){
+					// console.log('P1',socket.id);
+					// console.log('P1 DB:',table.playerOneSocket);
+					const otherPlayerLines = await tableService.getLines(table.playerTwo);
+					this.io.to(table.playerTwoSocket).emit('sendTable', otherPlayerLines);
+				}else{
+					// console.log('P2',socket.id);
+					// console.log('P2 DB:',table.playerTwoSocket);
+					const otherPlayerLines = await tableService.getLines(table.playerOne);
+					this.io.to(table.playerOneSocket).emit('sendTable', otherPlayerLines);
+				}
+				socket.emit('sendTable', lines);
 			});
 		});
 	}
-
 	listen(PORT) {
 		this.httpServer.listen(PORT,()=>console.log('Server is listening on http://localhost:'+PORT));
 	}

@@ -1,50 +1,119 @@
 const _ = require('lodash');
 const cardService = require('./cardService');
-module.exports = class Table {
-	constructor() {
-		this.table = Array(4).fill([]);
-	}
+const Table = require('../models/table');
+const moongosee = require('mongoose');
 
-	async putCard(clientData) {
-		let fieldId = clientData.fieldId;
+var self = module.exports = {
+
+	getLinesOnly:(table,isPlayerOne)=>{
+		let lines = [];
+		if(isPlayerOne){
+			lines=[
+				table.lineOne,
+				table.lineTwo,
+				table.lineThree,
+				table.lineFour
+			];
+		}else{
+			lines=[
+				table.lineFour,
+				table.lineThree,
+				table.lineTwo,
+				table.lineOne
+			];
+		}
+		return lines;
+	},
+
+	addPlayer : async(user,socketId)=>{
+		try{
+			//chekc is arleady StartedGame
+			const startedGame = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]});
+			if(_.isEmpty(startedGame)){
+			// check is freeTable
+				const freeTables = await Table.find({playerTwo:null});
+				if(_.isEmpty(freeTables)){
+					let table = new Table({
+						_id: new moongosee.Types.ObjectId(),
+						playerOne:user,
+						playerOneSocket:socketId,
+						round:1,
+						playerTurn:user
+					});
+					table = await table.save();
+					return self.getLinesOnly(table);
+				}else{
+					let table = await freeTables[0].updateOne({playerTwo:user,playerTwoSockey:socketId});
+					return self.getLinesOnly(table);
+				}
+			}else{
+				if(startedGame.playerOne.toString() === user._id.toString()){
+					startedGame.playerOneSocket=socketId;
+				}else{
+					startedGame.playerTwoSocket=socketId;
+				}
+				let table = await startedGame.updateOne(startedGame);
+				return self.getLinesOnly(table);
+			}
+		}catch(err){
+			console.log('addPlayerErr: ',err);
+		}
+	},
+
+	putCard: async(clientData,user)=>{
+		let table = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]});
+		let dbLines = ['lineOne','lineTwo','lineThree','lineFour'];
+		if(table.playerTwo.toString() === user._id.toString()){
+			dbLines = dbLines.reverse();
+		}
+		let fieldId = dbLines[--clientData.fieldId];
 		const card = clientData.card;
-		console.log(card);
-		//-- becouse index on front must be >=1
-		--fieldId;
 		try {
-			if (this.table[fieldId].length > 0) {
-				this.table[fieldId]=this.removeDuplicate(fieldId,card.id);
-				this.table[fieldId].push(card);
-				this.table[fieldId] = this.sortCardOnLine(this.table[fieldId]);
-				await this.updatePostionOnLines(clientData.field);
+			if (table[fieldId] && table[fieldId]?.length > 0) {
+				table[fieldId].push(card);
+				table[fieldId] = _.sortBy(table[fieldId], ['x']);
+				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field);
+				table = await Table.findOneAndUpdate({_id:table._id},table);
 			}
 			else {
-				this.table[fieldId] = [card];
-				await this.updatePostionOnLines(clientData.field);
+				table[fieldId] = [card];
+				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field);
+				table = await Table.findOneAndUpdate({_id:table._id},table);
 			}
 		} catch (err) {
 			console.log(err);
 		}
-	}
+	},
 
-	sortCardOnLine(line) {
+	sortCardOnLine: (line)=> {
 		return _.sortBy(line, ['x']);
+	},
+
+	updatePostionOnLine: async(line,field)=> {
+		line = await Promise.all(line.map(async(card,idx) => {
+			const width = 50;
+			const first = field.width / 2 - width * line.length / 2;
+			const cardId = card?.id || card._id;
+			const x = field.x + first + idx * width;
+			const y = field.y;
+			card = await cardService.getCardById(cardId);
+			card.x=x;
+			card.y=y;
+			card.width = width;
+			return card;
+		})) || [];
+		return line;
+	},
+
+	getLines: async(userId)=>{
+		const startedGame = await Table.findOne({ $or: [{ playerOne:userId },{ playerTwo:userId }]});
+		const isPlayerOne = startedGame.playerOne.toString() === userId.toString();
+		return self.getLinesOnly(startedGame,isPlayerOne);
+	},
+
+	getTable: async(user)=>{
+		const startedGame = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]});
+		return startedGame;
 	}
 
-	async updatePostionOnLines(field) {
-		this.table = await Promise.all(this.table.map(async(line) => {
-			line = await Promise.all(line.map(async(card, numOnLine) => {
-				const first = field.width / 2 - card.width * line.length / 2;
-				card = await cardService.getCardById(card?.id);
-				card.x = field.x + first + numOnLine * card.width;
-				card.y = field.y;
-				return card;
-			})) || [];
-			return line;
-		}));
-	}
-
-	removeDuplicate(fieldId,cardId){
-		return this.table[fieldId].filter(card=>card.id!=cardId);
-	}
 };
