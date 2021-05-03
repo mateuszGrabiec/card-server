@@ -90,19 +90,22 @@ var self = module.exports = {
 	},
 
 	updatePostionOnLine: async(line,field)=> {
-		line = await Promise.all(line.map(async(card) => {
-			const first = field.width / 2 - card.width * line.length / 2;
+		line = await Promise.all(line.map(async(card,idx) => {
+			const width = 50;
+			const first = field.width / 2 - width * line.length / 2;
 			const cardId = card?.id || card._id;
+			const x = field.x + first + idx * width;
+			const y = field.y;
 			card = await cardService.getCardById(cardId);
-			card.x = field.x + first ;//+ numOnLine * card.width;
-			card.y = field.y;
+			card.x=x;
+			card.y=y;
+			card.width = width;
 			return card;
 		})) || [];
 		return line;
 	},
 
 	getLines: async(userId)=>{
-		console.log('userGetLines',userId);
 		const startedGame = await Table.findOne({ $or: [{ playerOne:userId },{ playerTwo:userId }]});
 		const isPlayerOne = startedGame.playerOne.toString() === userId.toString();
 		return self.getLinesOnly(startedGame,isPlayerOne);
