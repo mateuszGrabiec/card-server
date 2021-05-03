@@ -8,7 +8,6 @@ module.exports = function(app,endpoint){
 
 	app.get(endpoint,async function(req,res){
 		if(req?.user){
-			console.log('in');
 			const deck = await deckService.getCurrent(req?.user) || false;
 			res.send({body:{deck:deck}});
 		}else{
