@@ -7,8 +7,6 @@ const cardSchema = moongosee.Schema({
 	describe:String,
 	isDraggable:Boolean,
 	image:String,
-	x:Number,
-	y:Number,
 	shield:Number,
 	onPutTrigger:Boolean,
 	isFree:Boolean
