@@ -72,12 +72,12 @@ var self = module.exports = {
 			if (table[fieldId] && table[fieldId]?.length > 0) {
 				table[fieldId].push(card);
 				table[fieldId] = _.sortBy(table[fieldId], ['x']);
-				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field);
+				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.deckId);
 				table = await Table.findOneAndUpdate({_id:table._id},table);
 			}
 			else {
 				table[fieldId] = [card];
-				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field);
+				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.deckId);
 				table = await Table.findOneAndUpdate({_id:table._id},table);
 			}
 		} catch (err) {
@@ -89,7 +89,7 @@ var self = module.exports = {
 		return _.sortBy(line, ['x']);
 	},
 
-	updatePostionOnLine: async(line,field)=> {
+	updatePostionOnLine: async(line,field, deckId)=> {
 		line = await Promise.all(line.map(async(card,idx) => {
 			const width = 50;
 			const first = field.width / 2 - width * line.length / 2;
@@ -97,10 +97,28 @@ var self = module.exports = {
 			const x = field.x + first + idx * width;
 			const y = field.y;
 			card = await cardService.getCardById(cardId);
-			card.x=x;
+			let newCard = {
+				_id: card._id, 
+				power:card.power,
+				name:card.name,
+				describe:card.describe,
+				isDraggable:card.isDraggable,
+				image:card.image,
+				x:x,
+				y:y,
+				shield:card.shield,
+				onPutTrigger:card.onPutTrigger,
+				isFree:card.isFree,
+				deckId: deckId,
+				width: width
+			}
+			/*card.x=x;
 			card.y=y;
+			card.deckId = deckId
 			card.width = width;
 			return card;
+			*/
+			return newCard
 		})) || [];
 		return line;
 	},
