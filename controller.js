@@ -142,9 +142,9 @@ class Controller {
 			// console.log('connected',socket.id);
 			// console.log(socket?.request?.user);
 			setTimeout(function () {
-				let deckLength = 4
-				socket.emit('sendPlayer', deckLength)
-			}, 5000)
+				let deckLength = 4;
+				socket.emit('sendPlayer', deckLength);
+			}, 5000);
 
 			socket.on('getTable',async()=>{
 				const lines = await tableService.getLines(socket?.request?.user?._id);
