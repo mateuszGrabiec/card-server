@@ -58,28 +58,31 @@
         z-index: -1;
     }
 </style>
-<div>
+<div class="container text-center w-50">
     <h1 class="text-center">Add deck</h1>
     {{#if cards}}
     <div class="container">
         <form action="/decks/add" method="POST">
-            <label for="name">Deck Name</label>
-            <input type="text" name="name" id="name" required><br>
-            <p>Your cards:</p>
-            {{# each cards as |val key|}}
-            {{!-- {{ val }} --}}
-            <h3>{{val.name}}</h3>
-            <div class="deck-creator-list">
-                <input type="checkbox" name="cards" value="{{ val.id }}" id="{{ val.id }}">
-                <label for="{{val.id}}">
-                    <img src="/game/src/assets/{{ val.image }}" />
-                </label>
-                {{!-- <img with="200" height="200" src="/game/src/assets/{{ val.image }}"> --}}
-
+            <label for="name">Name of your deck:</label>
+            <input class="form-control" type="text" name="name" id="name" required><br>
+            <h3 class="mt-2">Choose cards to deck:</h3>
+            <div class="row">
+                {{# each cards as |val key|}}
+                {{!-- {{ val }} --}}
+                <div class="col-12 col-xl-4">
+                    <h3>{{val.name}}</h3>
+                    <div class="deck-creator-list">
+                        <input type="checkbox" name="cards" value="{{ val.id }}" id="{{ val.id }}">
+                        <label for="{{val.id}}">
+                            <img src="/game/src/assets/{{ val.image }}" />
+                        </label>
+                        {{!-- <img with="200" height="200" src="/game/src/assets/{{ val.image }}"> --}}
+                    </div>
+                </div>
+                {{!-- {{key}} : {{val}} --}}
+                {{/each}}
             </div>
-            {{!-- {{key}} : {{val}} --}}
-            {{/each}}
-            <button type="submit">Create</button>
+            <button class="btn btn-danger" type="submit">Create</button>
         </form>
     </div>
     {{/if}}
