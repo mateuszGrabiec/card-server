@@ -11,6 +11,7 @@ const Handlebars = require('handlebars');
 
 const userService = require('./services/userService');
 const tableService = require('./services/tableService');
+const deckService = require('./services/deckService');
 
 class Controller {
 
@@ -144,22 +145,19 @@ class Controller {
 				console.log('disconnected');
 				const table = await tableService.removeFromTable(socket?.request?.user);
 				if(table?.playerOneSocket){
-					//TODO send request to other user
+					this.io.to(table.playerTwoSocket).emit('secondPlayerDisconnected');
 				}else{
-					//TODO send request to other user
+					this.io.to(table.playerOneSocket).emit('secondPlayerDisconnected');
 				}
 			});
 
 			const table = await tableService.addPlayer(socket?.request?.user,socket.id);
-			console.log(table);
 
-			if(table.playerOneSocket==socket.id){
-				let deckLength = 4;
-				socket.emit('sendPlayer', deckLength);
-				socket.emit('playerSited');
-			}else{
-				let deckLength = 4;
-				socket.emit('playerSited');
+			if(table.playerOneSocket!=null && table.playerTwoSocket!=null){
+				const playerOneDeck = await deckService.getCurrent({_id:table.playerOne});
+				const playerTwoDeck = await deckService.getCurrent({_id:table.playerTwo});
+				this.io.to(table.playerTwoSocket).emit('sendPlayer', {deckLength:playerOneDeck?.cards?.length});
+				this.io.to(table.playerOneSocket).emit('sendPlayer', {deckLength:playerTwoDeck?.cards?.length});
 			}
 
 			socket.on('getTable',async()=>{

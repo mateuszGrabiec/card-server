@@ -43,7 +43,7 @@ var self = module.exports = {
 					await table.save();
 					return await Table.findOne({_id:table._id});
 				}else{
-					await freeTables[0].updateOne({playerTwo:user,playerTwoSockey:socketId});
+					await freeTables[0].updateOne({playerTwo:user,playerTwoSocket:socketId});
 					return await Table.findOne({_id:freeTables[0]._id});
 				}
 			}else{
@@ -135,11 +135,11 @@ var self = module.exports = {
 	},
 
 	removeFromTable: async(user)=>{
-		const startedGame = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]});
-		if(startedGame.playerTwo.toString() === user._id.toString()){
-			//TODO remove PlayerTwo socket
+		let startedGame = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]});
+		if(startedGame?.playerTwo?.toString() === user._id.toString()){
+			startedGame = await Table.findOneAndUpdate({id:startedGame._id},{playerTwoSocket:null});
 		}else{
-			//TODO remove PlayerOne socket
+			startedGame = await Table.findOneAndUpdate({id:startedGame._id},{playerOneSocket:null});
 		}
 		return startedGame;
 	},
