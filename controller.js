@@ -58,7 +58,7 @@ class Controller {
 			secret: process.env.SESSION_SECRET,
 			resave: true,
 			saveUninitialized: true,
-			cookie: { maxAge: 60000 }
+			cookie: { maxAge: 3600000 }
 		});
 		this.app.use(this.sessionMiddleware);
 		this.app.use(passport.initialize());
@@ -122,6 +122,9 @@ class Controller {
 	}
 
 	checkAuthenticated(req,res,next){
+		if(process.env?.NODEENV=='PROD' && req.user && req.url=='/login'){
+			res.redirect('/profile');
+		}
 		if(req.url=='/login' || req.url=='/' || req.url=='/register' || req.url=='/deck/current'){
 			return next();
 		}
@@ -137,14 +140,27 @@ class Controller {
 	handleSocketConnection() {
 		this.io.on('connection', async (socket) => {
 
-			await tableService.addPlayer(socket?.request?.user,socket.id);
+			socket.on('disconnect', async()=>{
+				console.log('disconnected');
+				const table = await tableService.removeFromTable(socket?.request?.user);
+				if(table?.playerOneSocket){
+					//TODO send request to other user
+				}else{
+					//TODO send request to other user
+				}
+			});
 
-			// console.log('connected',socket.id);
-			// console.log(socket?.request?.user);
-			setTimeout(function () {
+			const table = await tableService.addPlayer(socket?.request?.user,socket.id);
+			console.log(table);
+
+			if(table.playerOneSocket==socket.id){
 				let deckLength = 4;
 				socket.emit('sendPlayer', deckLength);
-			}, 5000);
+				socket.emit('playerSited');
+			}else{
+				let deckLength = 4;
+				socket.emit('playerSited');
+			}
 
 			socket.on('getTable',async()=>{
 				const lines = await tableService.getLines(socket?.request?.user?._id);
