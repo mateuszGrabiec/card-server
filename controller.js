@@ -11,6 +11,7 @@ const Handlebars = require('handlebars');
 
 const userService = require('./services/userService');
 const tableService = require('./services/tableService');
+const deckService = require('./services/deckService');
 
 class Controller {
 
@@ -58,7 +59,7 @@ class Controller {
 			secret: process.env.SESSION_SECRET,
 			resave: true,
 			saveUninitialized: true,
-			cookie: { maxAge: 60000 }
+			cookie: { maxAge: 3600000 }
 		});
 		this.app.use(this.sessionMiddleware);
 		this.app.use(passport.initialize());
@@ -122,6 +123,9 @@ class Controller {
 	}
 
 	checkAuthenticated(req,res,next){
+		if(process.env?.NODEENV=='PROD' && req.user && req.url=='/login'){
+			res.redirect('/profile');
+		}
 		if(req.url=='/login' || req.url=='/' || req.url=='/register' || req.url=='/deck/current'){
 			return next();
 		}
@@ -137,14 +141,24 @@ class Controller {
 	handleSocketConnection() {
 		this.io.on('connection', async (socket) => {
 
-			await tableService.addPlayer(socket?.request?.user,socket.id);
+			socket.on('disconnect', async()=>{
+				console.log('disconnected');
+				const table = await tableService.removeFromTable(socket?.request?.user);
+				if(table?.playerOneSocket){
+					this.io.to(table.playerTwoSocket).emit('secondPlayerDisconnected');
+				}else{
+					this.io.to(table.playerOneSocket).emit('secondPlayerDisconnected');
+				}
+			});
 
-			// console.log('connected',socket.id);
-			// console.log(socket?.request?.user);
-			setTimeout(function () {
-				let deckLength = 4
-				socket.emit('sendPlayer', deckLength)
-			}, 5000)
+			const table = await tableService.addPlayer(socket?.request?.user,socket.id);
+
+			if(table.playerOneSocket!=null && table.playerTwoSocket!=null){
+				const playerOneDeck = await deckService.getCurrent({_id:table.playerOne});
+				const playerTwoDeck = await deckService.getCurrent({_id:table.playerTwo});
+				this.io.to(table.playerTwoSocket).emit('sendPlayer', {deckLength:playerOneDeck?.cards?.length});
+				this.io.to(table.playerOneSocket).emit('sendPlayer', {deckLength:playerTwoDeck?.cards?.length});
+			}
 
 			socket.on('getTable',async()=>{
 				const lines = await tableService.getLines(socket?.request?.user?._id);

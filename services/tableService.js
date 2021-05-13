@@ -40,11 +40,11 @@ var self = module.exports = {
 						round:1,
 						playerTurn:user
 					});
-					table = await table.save();
-					return self.getLinesOnly(table);
+					await table.save();
+					return await Table.findOne({_id:table._id});
 				}else{
-					let table = await freeTables[0].updateOne({playerTwo:user,playerTwoSockey:socketId});
-					return self.getLinesOnly(table);
+					await freeTables[0].updateOne({playerTwo:user,playerTwoSocket:socketId});
+					return await Table.findOne({_id:freeTables[0]._id});
 				}
 			}else{
 				if(startedGame.playerOne.toString() === user._id.toString()){
@@ -52,8 +52,8 @@ var self = module.exports = {
 				}else{
 					startedGame.playerTwoSocket=socketId;
 				}
-				let table = await startedGame.updateOne(startedGame);
-				return self.getLinesOnly(table);
+				await startedGame.updateOne(startedGame);
+				return await Table.findOne({_id:startedGame._id});
 			}
 		}catch(err){
 			console.log('addPlayerErr: ',err);
@@ -111,14 +111,14 @@ var self = module.exports = {
 				isFree:card.isFree,
 				deckId: deckId,
 				width: width
-			}
+			};
 			/*card.x=x;
 			card.y=y;
 			card.deckId = deckId
 			card.width = width;
 			return card;
 			*/
-			return newCard
+			return newCard;
 		})) || [];
 		return line;
 	},
@@ -132,6 +132,16 @@ var self = module.exports = {
 	getTable: async(user)=>{
 		const startedGame = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]});
 		return startedGame;
-	}
+	},
+
+	removeFromTable: async(user)=>{
+		let startedGame = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]});
+		if(startedGame?.playerTwo?.toString() === user._id.toString()){
+			startedGame = await Table.findOneAndUpdate({id:startedGame._id},{playerTwoSocket:null});
+		}else{
+			startedGame = await Table.findOneAndUpdate({id:startedGame._id},{playerOneSocket:null});
+		}
+		return startedGame;
+	},
 
 };
