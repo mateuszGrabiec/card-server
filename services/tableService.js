@@ -2,8 +2,11 @@ const _ = require('lodash');
 const cardService = require('./cardService');
 const Table = require('../models/table');
 const moongosee = require('mongoose');
+const deckService = require('./deckService');
 
-var self = module.exports = {
+const numOfHand = 3;
+
+let self = module.exports = {
 
 	getLinesOnly:(table,isPlayerOne)=>{
 		let lines = [];
@@ -32,18 +35,21 @@ var self = module.exports = {
 			if(_.isEmpty(startedGame)){
 			// check is freeTable
 				const freeTables = await Table.find({playerTwo:null});
+				const playerOneHand = await deckService.drawHand(user,numOfHand);
 				if(_.isEmpty(freeTables)){
 					let table = new Table({
 						_id: new moongosee.Types.ObjectId(),
 						playerOne:user,
 						playerOneSocket:socketId,
 						round:1,
-						playerTurn:user
+						playerTurn:user,
+						playerOneHand:playerOneHand
 					});
-					await table.save();
-					return await Table.findOne({_id:table._id});
+					table = await table.save();
+					return table;
 				}else{
-					await freeTables[0].updateOne({playerTwo:user,playerTwoSocket:socketId});
+					const playerTwoHand = await deckService.drawHand(user,numOfHand);
+					await freeTables[0].updateOne({playerTwo:user,playerTwoSocket:socketId,playerTwoHand:playerTwoHand}).populate(['playerOneHand','playerTwoHand']);
 					return await Table.findOne({_id:freeTables[0]._id});
 				}
 			}else{
@@ -52,8 +58,8 @@ var self = module.exports = {
 				}else{
 					startedGame.playerTwoSocket=socketId;
 				}
-				await startedGame.updateOne(startedGame);
-				return await Table.findOne({_id:startedGame._id});
+				let table = await Table.findOneAndUpdate({_id:startedGame._id},startedGame,{returnOriginal:false}).populate(['playerOneHand','playerTwoHand']);
+				return table;
 			}
 		}catch(err){
 			console.log('addPlayerErr: ',err);
@@ -61,27 +67,40 @@ var self = module.exports = {
 	},
 
 	putCard: async(clientData,user)=>{
+		if(clientData.fieldId < 0){
+			console.log('\n\n\n\n\n Wrong field Id');
+		}
 		let table = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]});
 		let dbLines = ['lineOne','lineTwo','lineThree','lineFour'];
-		if(table.playerTwo.toString() === user._id.toString()){
+		let isPlayerOne = self.isPlayerOne(user._id,table);
+		if(!isPlayerOne){
 			dbLines = dbLines.reverse();
 		}
 		let fieldId = dbLines[--clientData.fieldId];
 		const card = clientData.card;
-		try {
-			if (table[fieldId] && table[fieldId]?.length > 0) {
-				table[fieldId].push(card);
-				table[fieldId] = _.sortBy(table[fieldId], ['x']);
-				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.deckId);
-				table = await Table.findOneAndUpdate({_id:table._id},table);
+		const cardId = card?.id || card._id;
+		const isOnHand = await self.isCardOnHand(user,cardId);
+		if(isOnHand){
+			try {
+				if (table[fieldId] && table[fieldId]?.length > 0) {
+					table[fieldId].push(card);
+					table[fieldId] = _.sortBy(table[fieldId], ['x']);
+					table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.deckId);
+					table = await Table.findOneAndUpdate({_id:table._id},table);
+				// await self.removeCardFromHand(cardId,isPlayerOne,table);
+				}
+				else {
+					table[fieldId] = [card];
+					table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.deckId);
+					table = await Table.findOneAndUpdate({_id:table._id},table);
+				// await self.removeCardFromHand(cardId,isPlayerOne,table);
+				}
+			} catch (err) {
+				console.log(err.message);
+				throw 'Put Card ERR';
 			}
-			else {
-				table[fieldId] = [card];
-				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.deckId);
-				table = await Table.findOneAndUpdate({_id:table._id},table);
-			}
-		} catch (err) {
-			console.log(err);
+		}else{
+			throw 'Card is not on hand';
 		}
 	},
 
@@ -125,23 +144,59 @@ var self = module.exports = {
 
 	getLines: async(userId)=>{
 		const startedGame = await Table.findOne({ $or: [{ playerOne:userId },{ playerTwo:userId }]});
-		const isPlayerOne = startedGame.playerOne.toString() === userId.toString();
+		const isPlayerOne = self.isPlayerOne(userId,startedGame);
 		return self.getLinesOnly(startedGame,isPlayerOne);
 	},
 
 	getTable: async(user)=>{
-		const startedGame = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]});
+		const startedGame = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]}).populate(['playerOneHand','playerTwoHand']);
 		return startedGame;
+	},
+
+	isPlayerOne: (userId,table)=>{
+		if(_.isEmpty(userId) || _.isEmpty(table)){
+			throw 'Invalid data';
+		}
+		else if(table?.playerTwo && table.playerTwo.toString() == userId.toString()){
+			return false;
+		}else{
+			return true;
+		}
 	},
 
 	removeFromTable: async(user)=>{
 		let startedGame = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]});
 		if(startedGame?.playerTwo?.toString() === user._id.toString()){
-			startedGame = await Table.findOneAndUpdate({id:startedGame._id},{playerTwoSocket:null});
+			startedGame = await Table.findOneAndUpdate({_id:startedGame._id},{playerTwoSocket:null},{returnOriginal:false});
 		}else{
-			startedGame = await Table.findOneAndUpdate({id:startedGame._id},{playerOneSocket:null});
+			startedGame = await Table.findOneAndUpdate({_id:startedGame._id},{playerOneSocket:null},{returnOriginal:false});
 		}
 		return startedGame;
 	},
+
+	getHand: async(user)=>{
+		const startedGame = await Table.findOne({ $or: [{ playerOne:user._id },{ playerTwo:user._id }]}).populate(['playerOneHand','playerTwoHand']);
+		const isPlayerOne = self.isPlayerOne(user._id,startedGame);
+		if(isPlayerOne){
+			return startedGame.playerOneHand;
+		}
+		return startedGame.playerTwoHand;
+	},
+
+	isCardOnHand: async (user,cardId)=>{
+		const hand = await self.getHand(user);
+		const isOnHand = hand.filter(card=>card._id.toString() == cardId.toString());
+		return !_.isEmpty(isOnHand);
+	},
+
+	removeCardFromHand: async(cardId,isPlayerOne,table)=>{
+		if(isPlayerOne){
+			table.playerOneHand = table.playerOneHand.filter(card=>card._id.toString() !== cardId.toString());
+			await Table.findOneAndUpdate({_id:table.id},table);
+		}else{
+			table.playerTwoHand = table.playerTwoHand.filter(card=>card._id.toString() !== cardId.toString());
+			await Table.findOneAndUpdate({_id:table.id},table);
+		}
+	}
 
 };

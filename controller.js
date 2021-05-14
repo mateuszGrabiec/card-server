@@ -11,7 +11,6 @@ const Handlebars = require('handlebars');
 
 const userService = require('./services/userService');
 const tableService = require('./services/tableService');
-const deckService = require('./services/deckService');
 
 class Controller {
 
@@ -28,7 +27,6 @@ class Controller {
 
 		if(process.env.NODEENV=='DEV'){
 			// this.app.use(cors());
-			console.log();
 			this.app.use(function(req, res, next) {
 				res.header('Access-Control-Allow-Credentials', true);
 				res.header('Access-Control-Allow-Origin', req.headers.origin);
@@ -142,45 +140,51 @@ class Controller {
 		this.io.on('connection', async (socket) => {
 
 			socket.on('disconnect', async()=>{
-				console.log('disconnected');
 				const table = await tableService.removeFromTable(socket?.request?.user);
 				if(table?.playerOneSocket){
-					this.io.to(table.playerTwoSocket).emit('secondPlayerDisconnected');
-				}else{
-					this.io.to(table.playerOneSocket).emit('secondPlayerDisconnected');
+					this.io.to(table?.playerTwoSocket).emit('secondPlayerDisconnected');
+				}else if(table?.playerTwoSocket){
+					this.io.to(table?.playerOneSocket).emit('secondPlayerDisconnected');
 				}
 			});
 
 			const table = await tableService.addPlayer(socket?.request?.user,socket.id);
 
 			if(table.playerOneSocket!=null && table.playerTwoSocket!=null){
-				const playerOneDeck = await deckService.getCurrent({_id:table.playerOne});
-				const playerTwoDeck = await deckService.getCurrent({_id:table.playerTwo});
-				this.io.to(table.playerTwoSocket).emit('sendPlayer', {deckLength:playerOneDeck?.cards?.length});
-				this.io.to(table.playerOneSocket).emit('sendPlayer', {deckLength:playerTwoDeck?.cards?.length});
+				this.io.to(table.playerTwoSocket).emit('sendPlayer', {oppnentHandLength:table.playerOneHand?.length});
+				this.io.to(table.playerOneSocket).emit('sendPlayer', {oppnentHandLength:table.playerTwoHand?.length});
 			}
 
 			socket.on('getTable',async()=>{
 				const lines = await tableService.getLines(socket?.request?.user?._id);
-				socket.emit('sendTable',lines);
+				const myHand = await tableService.getHand(socket?.request?.user);
+				socket.emit('sendTable',{table:lines,myHand:myHand});
 			});
             
 			socket.on('put', async(clientData) => {
-				await tableService.putCard(clientData,socket?.request?.user);
-				const lines = await tableService.getLines(socket?.request?.user?._id);
-				const table = await tableService.getTable(socket?.request?.user);
-				if(table.playerOneSocket==socket.id){
-					// console.log('P1',socket.id);
-					// console.log('P1 DB:',table.playerOneSocket);
-					const otherPlayerLines = await tableService.getLines(table.playerTwo);
-					this.io.to(table.playerTwoSocket).emit('sendTable', otherPlayerLines);
-				}else{
-					// console.log('P2',socket.id);
-					// console.log('P2 DB:',table.playerTwoSocket);
-					const otherPlayerLines = await tableService.getLines(table.playerOne);
-					this.io.to(table.playerOneSocket).emit('sendTable', otherPlayerLines);
+				try{
+					let table = await tableService.getTable(socket?.request?.user);
+					if(table.playerTwoSocket && table.playerTwoSocket){
+						await tableService.putCard(clientData,socket?.request?.user);
+						const isPlayerOne = tableService.isPlayerOne(socket?.request?.user?._id,table);
+						const myHand = await tableService.getHand(socket?.request?.user._id);
+						if(isPlayerOne){
+							const otherPlayerLines = await tableService.getLines(table.playerTwo);
+							this.io.to(table.playerTwoSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand});
+						}else{
+							const myHand = await tableService.getHand(table.playerTwo);
+							const otherPlayerLines = await tableService.getLines(table.playerOne);
+							this.io.to(table.playerTwoSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand});
+						}
+						const lines = await tableService.getLines(socket?.request?.user?._id);
+						socket.emit('sendTable',  {table:lines,myHand:myHand});
+					}else{
+						socket.emit('error',{message:'No second Player'});
+					}
+				}catch(err){
+					console.error(err);
+					socket.emit('error',{message:err});
 				}
-				socket.emit('sendTable', lines);
 			});
 		});
 	}

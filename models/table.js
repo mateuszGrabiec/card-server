@@ -40,7 +40,16 @@ const tableSchema = moongosee.Schema({
 	},
 	status:{
 		type:String
-	}
+	},
+	playerOneHand:[{
+		type:moongosee.Schema.Types.ObjectId,
+		ref:'Card'
+	}],
+	playerTwoHand:[{
+		type:moongosee.Schema.Types.ObjectId,
+		ref:'Card'
+	}]
+	//TODO round State && round Wins
 });
 
 module.exports = moongosee.model('Table',tableSchema);

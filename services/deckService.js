@@ -1,7 +1,7 @@
 const Deck = require('../models/deck');
 const moongosee = require('mongoose');
 
-module.exports = {
+let self = module.exports = {
 	createDeck: async (user,deck)=>{
 		const decksWitSameName = await Deck.find({user:user,name:deck.name});
 		if(decksWitSameName?.length > 0){
@@ -37,5 +37,11 @@ module.exports = {
 	getCurrent: async(user)=>{
 		const currentDeck = await Deck.findOne({user:user,isCurrent:true}).populate('cards');
 		return currentDeck;
+	},
+	drawHand: async(user,numOfCards)=>{
+		const deck = await self.getCurrent(user);
+		let shuffled = deck?.cards?.sort(function(){return .5 - Math.random();}) || [];
+		const selected=shuffled.slice(0,numOfCards) || [];
+		return selected;
 	}
 };
