@@ -142,9 +142,9 @@ class Controller {
 			socket.on('disconnect', async()=>{
 				const table = await tableService.removeFromTable(socket?.request?.user);
 				if(table?.playerOneSocket){
-					this.io.to(table?.playerTwoSocket).emit('secondPlayerDisconnected');
-				}else if(table?.playerTwoSocket){
 					this.io.to(table?.playerOneSocket).emit('secondPlayerDisconnected');
+				}else if(table?.playerTwoSocket){
+					this.io.to(table?.playerTwoSocket).emit('secondPlayerDisconnected');
 				}
 			});
 
@@ -172,12 +172,17 @@ class Controller {
 							const otherPlayerLines = await tableService.getLines(table.playerTwo);
 							this.io.to(table.playerTwoSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand});
 						}else{
-							const myHand = await tableService.getHand(table.playerTwo);
+							const myHand = await tableService.getHand(table.playerOne);
 							const otherPlayerLines = await tableService.getLines(table.playerOne);
-							this.io.to(table.playerTwoSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand});
+							this.io.to(table.playerOneSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand});
 						}
 						const lines = await tableService.getLines(socket?.request?.user?._id);
 						socket.emit('sendTable',  {table:lines,myHand:myHand});
+						// //time out
+						// setTimeout(function(table){ 
+						// 	//TODO timeout independ form state basing on data
+						// 	console.log('PRINT from timeout'); 
+						// }, 3000);
 					}else{
 						socket.emit('error',{message:'No second Player'});
 					}

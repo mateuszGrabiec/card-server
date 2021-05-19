@@ -67,12 +67,12 @@ let self = module.exports = {
 	},
 
 	putCard: async(clientData,user)=>{
-		if(clientData.fieldId < 0){
-			console.log('\n\n\n\n\n Wrong field Id');
-		}
 		let table = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]});
+		if(table.playerTurn.toString()!==user._id.toString()){
+			throw 'Is not your turn';
+		}
 		let dbLines = ['lineOne','lineTwo','lineThree','lineFour'];
-		let isPlayerOne = self.isPlayerOne(user._id,table);
+		const isPlayerOne = self.isPlayerOne(user._id,table);
 		if(!isPlayerOne){
 			dbLines = dbLines.reverse();
 		}
@@ -84,17 +84,19 @@ let self = module.exports = {
 			try {
 				if (table[fieldId] && table[fieldId]?.length > 0) {
 					table[fieldId].push(card);
-					table[fieldId] = _.sortBy(table[fieldId], ['x']);
-					table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.deckId);
-					table = await Table.findOneAndUpdate({_id:table._id},table);
-				// await self.removeCardFromHand(cardId,isPlayerOne,table);
 				}
 				else {
 					table[fieldId] = [card];
-					table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.deckId);
-					table = await Table.findOneAndUpdate({_id:table._id},table);
-				// await self.removeCardFromHand(cardId,isPlayerOne,table);
 				}
+				table[fieldId] = _.sortBy(table[fieldId], ['x']);
+				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.deckId);
+				if(isPlayerOne){
+					table.playerTurn=table.playerTwo;
+				}else{
+					table.playerTurn=table.playerOne;
+				}
+				// table = await Table.findOneAndUpdate({_id:table._id},table);
+				await self.removeCardFromHand(cardId,isPlayerOne,table);
 			} catch (err) {
 				console.log(err.message);
 				throw 'Put Card ERR';
@@ -110,7 +112,7 @@ let self = module.exports = {
 
 	updatePostionOnLine: async(line,field, deckId)=> {
 		line = await Promise.all(line.map(async(card,idx) => {
-			const width = 50;
+			const width = 150;
 			const first = field.width / 2 - width * line.length / 2;
 			const cardId = card?.id || card._id;
 			const x = field.x + first + idx * width;
@@ -166,10 +168,11 @@ let self = module.exports = {
 
 	removeFromTable: async(user)=>{
 		let startedGame = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]});
-		if(startedGame?.playerTwo?.toString() === user._id.toString()){
-			startedGame = await Table.findOneAndUpdate({_id:startedGame._id},{playerTwoSocket:null},{returnOriginal:false});
-		}else{
+		const isPlayerOne = await self.isPlayerOne(user._id, startedGame);
+		if(isPlayerOne){
 			startedGame = await Table.findOneAndUpdate({_id:startedGame._id},{playerOneSocket:null},{returnOriginal:false});
+		}else{
+			startedGame = await Table.findOneAndUpdate({_id:startedGame._id},{playerTwoSocket:null},{returnOriginal:false});
 		}
 		return startedGame;
 	},
