@@ -104,6 +104,9 @@ class Controller {
 		console.log(`Serving static from ${this.clientPath}`);
 		this.app.use(express.static(this.clientPath));
 
+		//config const variablex i.e. roundTime
+		this.roundTime = 10000;
+
 		// ADD card to user by id
 		//60660719b327566a8d1ee23a
 		// cardService.getCards().then(cards=>{
@@ -153,6 +156,19 @@ class Controller {
 			if(table.playerOneSocket!=null && table.playerTwoSocket!=null){
 				this.io.to(table.playerTwoSocket).emit('sendPlayer', {oppnentHandLength:table.playerOneHand?.length});
 				this.io.to(table.playerOneSocket).emit('sendPlayer', {oppnentHandLength:table.playerTwoHand?.length});
+				if(socket?.request?.user?._id.toString() == table?.playerTurn?.toString()){
+					setTimeout(async ()=>{
+						const isUserMoved = await tableService.isUserMoved(table);
+						if(!isUserMoved){
+							const isPlayerOne = await tableService.isPlayerOne(table.playerTurn,table);
+							if(isPlayerOne){
+								this.io.to(table.playerOneSocket).emit('roundSkipped');
+							}else{
+								this.io.to(table.playerTwoSocket).emit('roundSkipped');
+							}
+						}
+					}, this.roundTime);
+				}
 			}
 
 			socket.on('getTable',async()=>{
@@ -170,19 +186,29 @@ class Controller {
 						const myHand = await tableService.getHand(socket?.request?.user._id);
 						if(isPlayerOne){
 							const otherPlayerLines = await tableService.getLines(table.playerTwo);
-							this.io.to(table.playerTwoSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand});
+							this.io.to(table.playerTwoSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand, myRound:true});
 						}else{
 							const myHand = await tableService.getHand(table.playerOne);
 							const otherPlayerLines = await tableService.getLines(table.playerOne);
-							this.io.to(table.playerOneSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand});
+							this.io.to(table.playerOneSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand, myRound:true});
 						}
 						const lines = await tableService.getLines(socket?.request?.user?._id);
 						socket.emit('sendTable',  {table:lines,myHand:myHand});
-						// //time out
-						// setTimeout(function(table){ 
-						// 	//TODO timeout independ form state basing on data
-						// 	console.log('PRINT from timeout'); 
-						// }, 3000);
+						setTimeout(async ()=>{
+							if(isPlayerOne){
+								table.playerTurn=table.playerTwo;
+							}else{
+								table.playerTurn=table.playerOne;
+							}
+							const isUserMoved = await tableService.isUserMoved(table);
+							//TODO timeout independ form state basing on data
+							console.log('PRINT from timeout');
+							console.log('isUserMoved',isUserMoved);
+							if(!isUserMoved){
+								//TODO IMPL REMOVING CARD from HAND
+								this.io.to(table.playerOneSocket).emit('roundSkipped');
+							}
+						}, this.roundTime);
 					}else{
 						socket.emit('error',{message:'No second Player'});
 					}

@@ -1,5 +1,9 @@
+const tableService = require('../../services/tableService');
+
 module.exports = function(app,endpoint){
 	app.get(endpoint,async function(req,res){
-		res.send({body:{returned:false}});
+		const table = await tableService.getTable(req?.user);
+		const areBothPlayers = (table.playerOneSocket && table.playerTwoSocket);
+		res.send({body:{returned:areBothPlayers}});
 	});
 };

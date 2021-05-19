@@ -200,6 +200,18 @@ let self = module.exports = {
 			table.playerTwoHand = table.playerTwoHand.filter(card=>card._id.toString() !== cardId.toString());
 			await Table.findOneAndUpdate({_id:table.id},table);
 		}
-	}
+	},
 
+	isUserMoved: async(table)=>{
+		const isPlayerOne = await self.isPlayerOne(table.playerTurn,table);
+		if(isPlayerOne){
+			const oldHand = table.playerOneHand;
+			const newHand = await self.getHand(table.playerOne);
+			return oldHand?.length > newHand?.length;
+		}else{
+			const oldHand = table.playerTwoHand;
+			const newHand = await self.getHand(table.playerTwo);
+			return oldHand?.length > newHand?.length;
+		}
+	}
 };
