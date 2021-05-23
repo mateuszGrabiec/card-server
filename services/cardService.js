@@ -13,7 +13,8 @@ module.exports = {
 			y:card.y,
 			shield:card.shield,
 			onPutTrigger:card.onPutTrigger,
-			isFree: card.isFree
+			isFree: card.isFree,
+			skill: "buffYourHand"
 		});
 		newCard.save().then(result=>{
 			console.log(result);
