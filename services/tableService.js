@@ -89,7 +89,7 @@ let self = module.exports = {
 					table[fieldId] = [card];
 				}
 				table[fieldId] = _.sortBy(table[fieldId], ['x']);
-				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.deckId);
+				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.deckId, card.buffed, card.deBuff);
 				if(isPlayerOne){
 					table.playerTurn=table.playerTwo;
 				}else{
@@ -110,7 +110,8 @@ let self = module.exports = {
 		return _.sortBy(line, ['x']);
 	},
 
-	updatePostionOnLine: async(line,field, deckId)=> {
+	// TODO: i send on put a information about if is buffed, add 10 to power and save it to line and return it to front || if debuffed is true you have to substract shield if equal or greater than 10, if lower substract power instead and save it to line card paramater
+	updatePostionOnLine: async(line,field, deckId, buff, deBuff)=> {
 		line = await Promise.all(line.map(async(card,idx) => {
 			const width = 150;
 			const first = field.width / 2 - width * line.length / 2;
@@ -131,7 +132,8 @@ let self = module.exports = {
 				onPutTrigger:card.onPutTrigger,
 				isFree:card.isFree,
 				deckId: deckId,
-				width: width
+				width: width,
+				skill: card.skill
 			};
 			/*card.x=x;
 			card.y=y;

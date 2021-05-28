@@ -105,7 +105,7 @@ class Controller {
 		this.app.use(express.static(this.clientPath));
 
 		//config const variablex i.e. roundTime
-		this.roundTime = 10000;
+		this.roundTime = 32000;
 
 		// ADD card to user by id
 		//60660719b327566a8d1ee23a
@@ -140,8 +140,8 @@ class Controller {
 	}
 
 	handleSocketConnection() {
+		//TODO WHEN SECOND PLAYER CONNECTS send a enemy deck_id
 		this.io.on('connection', async (socket) => {
-
 			socket.on('disconnect', async()=>{
 				const table = await tableService.removeFromTable(socket?.request?.user);
 				if(table?.playerOneSocket){
@@ -154,8 +154,9 @@ class Controller {
 			const table = await tableService.addPlayer(socket?.request?.user,socket.id);
 
 			if(table.playerOneSocket!=null && table.playerTwoSocket!=null){
-				this.io.to(table.playerTwoSocket).emit('sendPlayer', {oppnentHandLength:table.playerOneHand?.length});
-				this.io.to(table.playerOneSocket).emit('sendPlayer', {oppnentHandLength:table.playerTwoHand?.length});
+				//HERE
+				this.io.to(table.playerTwoSocket).emit('sendPlayer', {oppnentHandLength:table.playerOneHand?.length, enemyDeckId: "60902a58003eb50513877e3a"});
+				this.io.to(table.playerOneSocket).emit('sendPlayer', {oppnentHandLength:table.playerTwoHand?.length, enemyDeckId: "609d543e3a8c270345c3ba26"});
 				if(socket?.request?.user?._id.toString() == table?.playerTurn?.toString()){
 					setTimeout(async ()=>{
 						const isUserMoved = await tableService.isUserMoved(table);
@@ -174,26 +175,30 @@ class Controller {
 			socket.on('getTable',async()=>{
 				const lines = await tableService.getLines(socket?.request?.user?._id);
 				const myHand = await tableService.getHand(socket?.request?.user);
-				socket.emit('sendTable',{table:lines,myHand:myHand});
+				const isMyround = socket?.request?.user?._id.toString() === table.playerTurn.toString();
+				socket.emit('sendTable',{table:lines,myHand:myHand, isMyRound: isMyround});
 			});
             
 			socket.on('put', async(clientData) => {
+				//TODO DO A ROUND SHIFT PROPERLY
 				try{
 					let table = await tableService.getTable(socket?.request?.user);
 					if(table.playerTwoSocket && table.playerTwoSocket){
 						await tableService.putCard(clientData,socket?.request?.user);
 						const isPlayerOne = tableService.isPlayerOne(socket?.request?.user?._id,table);
 						const myHand = await tableService.getHand(socket?.request?.user._id);
+						const isMyround = socket?.request?.user?._id.toString() === table.playerTurn.toString();
 						if(isPlayerOne){
 							const otherPlayerLines = await tableService.getLines(table.playerTwo);
-							this.io.to(table.playerTwoSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand, myRound:true});
+							this.io.to(table.playerTwoSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand, isMyRound:isMyround});
 						}else{
 							const myHand = await tableService.getHand(table.playerOne);
 							const otherPlayerLines = await tableService.getLines(table.playerOne);
-							this.io.to(table.playerOneSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand, myRound:true});
+							this.io.to(table.playerOneSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand, isMyRound:isMyround});
 						}
+						
 						const lines = await tableService.getLines(socket?.request?.user?._id);
-						socket.emit('sendTable',  {table:lines,myHand:myHand});
+						socket.emit('sendTable',  {table:lines,myHand:myHand, isMyRound:isMyround});
 						setTimeout(async ()=>{
 							if(isPlayerOne){
 								table.playerTurn=table.playerTwo;
