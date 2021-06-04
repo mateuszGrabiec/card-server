@@ -11,6 +11,7 @@ const Handlebars = require('handlebars');
 
 const userService = require('./services/userService');
 const tableService = require('./services/tableService');
+const deckService = require('./services/deckService');
 
 class Controller {
 
@@ -155,8 +156,8 @@ class Controller {
 
 			if(table.playerOneSocket!=null && table.playerTwoSocket!=null){
 				//HERE
-				this.io.to(table.playerTwoSocket).emit('sendPlayer', {oppnentHandLength:table.playerOneHand?.length, enemyDeckId: '60902a58003eb50513877e3a'});
-				this.io.to(table.playerOneSocket).emit('sendPlayer', {oppnentHandLength:table.playerTwoHand?.length, enemyDeckId: '609d543e3a8c270345c3ba26'});
+				this.io.to(table.playerTwoSocket).emit('sendPlayer', {oppnentHandLength:table.playerOneHand?.length, enemyDeckId: await deckService.getCurrentDeckId(table.playerOne)});
+				this.io.to(table.playerOneSocket).emit('sendPlayer', {oppnentHandLength:table.playerTwoHand?.length, enemyDeckId: await deckService.getCurrentDeckId(table.playerTwo)});
 				
 				setTimeout(async ()=>{
 					const isUserMoved = await tableService.isUserMoved(table);

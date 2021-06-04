@@ -43,5 +43,11 @@ let self = module.exports = {
 		let shuffled = deck?.cards?.sort(function(){return .5 - Math.random();}) || [];
 		const selected=shuffled.slice(0,numOfCards) || [];
 		return selected;
+	},
+	getCurrentDeckId: async(user)=>{
+		console.log('user',user);
+		const currentDeck = await Deck.findOne({user:user,isCurrent:true});
+		console.log(currentDeck);
+		return currentDeck?._id;
 	}
 };
