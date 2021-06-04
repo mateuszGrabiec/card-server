@@ -87,14 +87,6 @@ let self = module.exports = {
 		const isOnHand = await self.isCardOnHand(user,cardId);
 		if(isOnHand){
 			try {
-				// if(card.buffed){
-				// 	card.power = card.power+10;
-				// 	card.buffed = false;
-				// }
-				// if(card.deBuff){
-				// 	card.power = card.power-10;
-				// 	card.deBuff = false;
-				// }
 				if (table[fieldId] && table[fieldId]?.length > 0) {
 					table[fieldId].push(card);
 				}
@@ -103,15 +95,11 @@ let self = module.exports = {
 				}
 				table[fieldId] = _.sortBy(table[fieldId], ['x']);
 				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.deckId,card.buffed,card.deBuff);
-				if(isPlayerOne){
-					table.playerTurn=table.playerTwo;
-				}else{
-					table.playerTurn=table.playerOne;
-				}
-				// table = await Table.findOneAndUpdate({_id:table._id},table);
+				await self.saveLines(table,fieldId);
 				await self.removeCardFromHand(cardId,isPlayerOne,table);
+				await self.switchRound(table._id);
 			} catch (err) {
-				console.log(err.message);
+				console.log('Put Card ERR',err.message);
 				throw 'Put Card ERR';
 			}
 		}else{
@@ -217,18 +205,19 @@ let self = module.exports = {
 	},
 
 	removeCardFromHand: async(cardId,isPlayerOne,table)=>{
+		//TODO remove only one from hand
 		if(isPlayerOne){
-			table.playerOneHand = table.playerOneHand.filter(card=>card._id.toString() !== cardId.toString());
-			await Table.findOneAndUpdate({_id:table.id},table);
+			let playerOneHand = table.playerOneHand.filter(card=>card._id.toString() !== cardId.toString());
+			await Table.findOneAndUpdate({_id:table.id},{playerOneHand:playerOneHand});
 		}else{
-			table.playerTwoHand = table.playerTwoHand.filter(card=>card._id.toString() !== cardId.toString());
-			await Table.findOneAndUpdate({_id:table.id},table);
+			let playerTwoHand = table.playerTwoHand.filter(card=>card._id.toString() !== cardId.toString());
+			await Table.findOneAndUpdate({_id:table.id},{playerTwoHand:playerTwoHand});
 		}
 	},
 
 	isUserMoved: async(table)=>{
 		//TODO check is round this same
-		const isPlayerOne = await self.isPlayerOne(table.playerTurn,table);
+		const isPlayerOne = self.isPlayerOne(table.playerTurn,table);
 		if(isPlayerOne){
 			const oldHand = table.playerOneHand;
 			const newHand = await self.getHand(table.playerOne);
@@ -242,5 +231,58 @@ let self = module.exports = {
 
 	getTableById: async(tableId)=>{
 		return Table.findOne({_id:tableId});
+	},
+
+	passRound: async(user)=>{
+		let table = await self.getTable(user);
+		const isPlayerOne = self.isPlayerOne(user?._id,table);
+		if(isPlayerOne){
+			await Table.findOneAndUpdate({_id:table._id},{playerOnePassed:true});
+		}else{
+			await Table.findOneAndUpdate({_id:table._id},{playerTwoPassed:true});
+		}
+	},
+
+	switchRound: async(tableId)=>{
+		let table = await Table.findOne({_id:tableId});
+		if(table.playerOne.toString() == table.playerTurn.toString() ){
+			table.playerTurn = table.playerTwo;
+		}else{
+			table.playerTurn = table.playerOne;
+		}
+		await Table.findOneAndUpdate({_id:tableId},{playerTurn:table.playerTurn},{returnOriginal:false});
+	},
+
+	isMyRound: async(user)=>{
+		const table = await self.getTable(user);
+		const isMyRound = table.playerTurn.toString() === user?._id.toString();
+		return isMyRound;
+	},
+
+	saveLines: async(table,fieldName)=>{
+		let oldTable = await Table.findOne({_id:table._id});
+		oldTable[fieldName] = table[fieldName];
+		await Table.findOneAndUpdate({_id:table._id},oldTable);
+	},
+
+	isGameRunning: async(user)=>{
+		const table = await self.getTable(user);
+		if(table.playerOneSocket && table.playerTwoSocket){
+			return true;
+		}else{
+			return false;
+		}
+	},
+
+	getCurrentPlayerSocket: async(tableId)=>{
+		const table = await Table.findOne({_id:tableId});
+		const isPlayerOne = self.isPlayerOne(table.playerTurn,table);
+		if(isPlayerOne){
+			console.log(table.playerOneSocket);
+			return table.playerOneSocket;
+		}else{
+			console.log(table.playerTwoSocket);
+			return table.playerTwoSocket;
+		}
 	}
 };

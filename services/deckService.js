@@ -45,9 +45,7 @@ let self = module.exports = {
 		return selected;
 	},
 	getCurrentDeckId: async(user)=>{
-		console.log('user',user);
 		const currentDeck = await Deck.findOne({user:user,isCurrent:true});
-		console.log(currentDeck);
 		return currentDeck?._id;
 	}
 };

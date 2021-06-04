@@ -48,8 +48,19 @@ const tableSchema = moongosee.Schema({
 	playerTwoHand:[{
 		type:moongosee.Schema.Types.ObjectId,
 		ref:'Card'
-	}]
+	}],
 	//TODO round State && round Wins
+	playerOnePassed:{
+		type:Boolean,
+		default: false
+	},
+	playerTwoPassed:{
+		type:Boolean,
+		default: false
+	},
+	roundStates:{
+		type: Array
+	}
 });
 
 module.exports = moongosee.model('Table',tableSchema);
