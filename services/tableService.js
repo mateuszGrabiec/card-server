@@ -29,6 +29,7 @@ let self = module.exports = {
 	},
 
 	addPlayer : async(user,socketId)=>{
+		let tableToReturn;
 		try{
 			//chekc is arleady StartedGame
 			const startedGame = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }]});
@@ -46,11 +47,11 @@ let self = module.exports = {
 						playerOneHand:playerOneHand
 					});
 					table = await table.save();
-					return table;
+					tableToReturn = table;
 				}else{
 					const playerTwoHand = await deckService.drawHand(user,numOfHand);
 					await freeTables[0].updateOne({playerTwo:user,playerTwoSocket:socketId,playerTwoHand:playerTwoHand}).populate(['playerOneHand','playerTwoHand']);
-					return await Table.findOne({_id:freeTables[0]._id});
+					tableToReturn = await Table.findOne({_id:freeTables[0]._id});
 				}
 			}else{
 				if(startedGame.playerOne.toString() === user._id.toString()){
@@ -59,8 +60,12 @@ let self = module.exports = {
 					startedGame.playerTwoSocket=socketId;
 				}
 				let table = await Table.findOneAndUpdate({_id:startedGame._id},startedGame,{returnOriginal:false}).populate(['playerOneHand','playerTwoHand']);
-				return table;
+				tableToReturn = table;
 			}
+			if(tableToReturn?.playerTurn?.username){
+				tableToReturn.playerTurn =  tableToReturn?.playerTurn?._id;
+			}
+			return tableToReturn;
 		}catch(err){
 			console.log('addPlayerErr: ',err);
 		}
@@ -215,5 +220,9 @@ let self = module.exports = {
 			const newHand = await self.getHand(table.playerTwo);
 			return oldHand?.length > newHand?.length;
 		}
+	},
+
+	getTableById: async(tableId)=>{
+		return Table.findOne({_id:tableId});
 	}
 };

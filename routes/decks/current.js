@@ -11,7 +11,7 @@ module.exports = function(app,endpoint){
 			const deck = await deckService.getCurrent(req?.user) || false;
 			res.send({body:{deck:deck}});
 		}else{
-			res.sendStatus(403);//.send({body:{error:'Access Denied'}});
+			res.sendStatus(403);
 		}
 	});
 };

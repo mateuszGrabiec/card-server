@@ -105,7 +105,7 @@ class Controller {
 		this.app.use(express.static(this.clientPath));
 
 		//config const variablex i.e. roundTime
-		this.roundTime = 32000;
+		this.roundTime = 30000;
 
 		// ADD card to user by id
 		//60660719b327566a8d1ee23a
@@ -155,21 +155,17 @@ class Controller {
 
 			if(table.playerOneSocket!=null && table.playerTwoSocket!=null){
 				//HERE
-				this.io.to(table.playerTwoSocket).emit('sendPlayer', {oppnentHandLength:table.playerOneHand?.length, enemyDeckId: "60902a58003eb50513877e3a"});
-				this.io.to(table.playerOneSocket).emit('sendPlayer', {oppnentHandLength:table.playerTwoHand?.length, enemyDeckId: "609d543e3a8c270345c3ba26"});
-				if(socket?.request?.user?._id.toString() == table?.playerTurn?.toString()){
-					setTimeout(async ()=>{
-						const isUserMoved = await tableService.isUserMoved(table);
-						if(!isUserMoved){
-							const isPlayerOne = await tableService.isPlayerOne(table.playerTurn,table);
-							if(isPlayerOne){
-								this.io.to(table.playerOneSocket).emit('roundSkipped');
-							}else{
-								this.io.to(table.playerTwoSocket).emit('roundSkipped');
-							}
-						}
-					}, this.roundTime);
-				}
+				this.io.to(table.playerTwoSocket).emit('sendPlayer', {oppnentHandLength:table.playerOneHand?.length, enemyDeckId: '60902a58003eb50513877e3a'});
+				this.io.to(table.playerOneSocket).emit('sendPlayer', {oppnentHandLength:table.playerTwoHand?.length, enemyDeckId: '609d543e3a8c270345c3ba26'});
+				
+				setTimeout(async ()=>{
+					const isUserMoved = await tableService.isUserMoved(table);
+					//TODO timeout independ form state basing on data
+					// const refreshedTable = tableService.getTableById(table.id);
+					if(!isUserMoved){
+						this.io.to(table.playerOneSocket).emit('roundSkipped');
+					}
+				}, this.roundTime);
 			}
 
 			socket.on('getTable',async()=>{
@@ -180,7 +176,6 @@ class Controller {
 			});
             
 			socket.on('put', async(clientData) => {
-				//TODO DO A ROUND SHIFT PROPERLY
 				try{
 					let table = await tableService.getTable(socket?.request?.user);
 					if(table.playerTwoSocket && table.playerTwoSocket){
@@ -188,17 +183,18 @@ class Controller {
 						const isPlayerOne = tableService.isPlayerOne(socket?.request?.user?._id,table);
 						const myHand = await tableService.getHand(socket?.request?.user._id);
 						const isMyround = socket?.request?.user?._id.toString() === table.playerTurn.toString();
+						const isOpponentRound = !isMyround;
 						if(isPlayerOne){
 							const otherPlayerLines = await tableService.getLines(table.playerTwo);
-							this.io.to(table.playerTwoSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand, isMyRound:isMyround});
+							this.io.to(table.playerTwoSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand, isMyRound: isMyround});
 						}else{
 							const myHand = await tableService.getHand(table.playerOne);
 							const otherPlayerLines = await tableService.getLines(table.playerOne);
-							this.io.to(table.playerOneSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand, isMyRound:isMyround});
+							this.io.to(table.playerOneSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand, isMyRound: isMyround});
 						}
 						
 						const lines = await tableService.getLines(socket?.request?.user?._id);
-						socket.emit('sendTable',  {table:lines,myHand:myHand, isMyRound:isMyround});
+						socket.emit('sendTable',  {table:lines,myHand:myHand, isMyRound:isOpponentRound});
 						setTimeout(async ()=>{
 							if(isPlayerOne){
 								table.playerTurn=table.playerTwo;
@@ -207,10 +203,11 @@ class Controller {
 							}
 							const isUserMoved = await tableService.isUserMoved(table);
 							//TODO timeout independ form state basing on data
-							console.log('PRINT from timeout');
-							console.log('isUserMoved',isUserMoved);
-							if(!isUserMoved){
+							// const refreshedTable = tableService.getTableById(table.id);
+							if(!isUserMoved && isPlayerOne){
 								//TODO IMPL REMOVING CARD from HAND
+								this.io.to(table.playerTwoSocket).emit('roundSkipped');
+							}else if(!isUserMoved){
 								this.io.to(table.playerOneSocket).emit('roundSkipped');
 							}
 						}, this.roundTime);

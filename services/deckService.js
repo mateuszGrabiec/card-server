@@ -7,7 +7,7 @@ let self = module.exports = {
 		if(decksWitSameName?.length > 0){
 			throw 'Deck with this name arleady exist';
 		}else{
-			if(deck.cards?.length > 9){
+			if(deck.cards?.length < 15){
 				throw 'Deck has to small amount of cards';
 			}
 			const newdeck = new Deck({

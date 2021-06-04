@@ -1,5 +1,4 @@
 const LocalStrategy = require('passport-local').Strategy;
-// const userService = require('./services/userService');
 const bcrypt = require('bcrypt');
 
 async function initialize(passport,getUserByEmail, getUserById){
