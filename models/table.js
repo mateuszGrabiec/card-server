@@ -38,9 +38,6 @@ const tableSchema = moongosee.Schema({
 	lineFour:{
 		type: Array
 	},
-	status:{
-		type:String
-	},
 	playerOneHand:[{
 		type:moongosee.Schema.Types.ObjectId,
 		ref:'Card'
@@ -49,7 +46,6 @@ const tableSchema = moongosee.Schema({
 		type:moongosee.Schema.Types.ObjectId,
 		ref:'Card'
 	}],
-	//TODO round State && round Wins
 	playerOnePassed:{
 		type:Boolean,
 		default: false
@@ -60,6 +56,18 @@ const tableSchema = moongosee.Schema({
 	},
 	roundStates:{
 		type: Array
+	},
+	result:{
+		type:String,
+		enum: ['p1', 'p2','draw']
+	},
+	breakCounter:{
+		type:Number,
+		default:0
+	},
+	status:{
+		type:String,
+		enum: ['ongoing','paused','ended']
 	}
 });
 

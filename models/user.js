@@ -34,6 +34,10 @@ const userSchema = moongosee.Schema({
 		type:moongosee.Schema.Types.ObjectId,
 		ref:'Card'
 	}],
+	score:{
+		type:Number,
+		default:100,
+	}
 });
 
 module.exports = moongosee.model('User',userSchema);

@@ -161,10 +161,9 @@ class Controller {
 				
 				setTimeout(async ()=>{
 					const isUserMoved = await tableService.isUserMoved(table);
-					
-					if(!isUserMoved){
-						const currentSocket = await tableService.getCurrentPlayerSocket(table);
-						console.log('current',currentSocket);
+					const refreshedTable = await tableService.getTableById(table._id);
+					if(!isUserMoved && (!refreshedTable.playerOnePassed && !refreshedTable.playerTwoPassed)){
+						const currentSocket = await tableService.getCurrentPlayerSocket(table?._id);
 						this.io.to(currentSocket).emit('roundSkipped');
 					}
 				}, this.roundTime);
@@ -184,8 +183,47 @@ class Controller {
 			});
 
 			socket.on('endRound',async()=>{
-				console.log('User ended round');
-				await tableService.passRound(socket?.request?.user);
+				const table = await tableService.getTable(socket?.request?.user);
+				let gameInfo = await tableService.passRound(socket?.request?.user);
+				console.log('gameInfo',gameInfo);
+				if(gameInfo.sendWinInfo){
+					if(gameInfo.isDrawOfRound){
+						this.io.to(table.playerOneSocket).emit('gameStatus',{gameStatus:'DRAW'});
+						this.io.to(table.playerTwoSocket).emit('gameStatus',{gameStatus:'DRAW'});
+					}else if(gameInfo.isPlayerOneWonRound){
+						this.io.to(table.playerOneSocket).emit('gameStatus',{gameStatus:'WIN'});
+						this.io.to(table.playerTwoSocket).emit('gameStatus',{gameStatus:'LOSE'});
+					}else if(gameInfo.isPlayerTwoWonRound){
+						this.io.to(table.playerOneSocket).emit('gameStatus',{gameStatus:'LOSE'});
+						this.io.to(table.playerTwoSocket).emit('gameStatus',{gameStatus:'WIN'});
+					}
+				}else if(gameInfo.sendRoundInfo){
+					if(gameInfo.isDrawOfRound){
+						this.io.to(table.playerOneSocket).emit('roundStatus',{roundStatus:'DRAW'});
+						this.io.to(table.playerTwoSocket).emit('roundStatus',{roundStatus:'DRAW'});
+					}else if(gameInfo.isPlayerOneWonRound){
+						this.io.to(table.playerOneSocket).emit('roundStatus',{roundStatus:'WIN'});
+						this.io.to(table.playerTwoSocket).emit('roundStatus',{roundStatus:'LOSE'});
+					}else if(gameInfo.isPlayerTwoWonRound){
+						this.io.to(table.playerOneSocket).emit('roundStatus',{roundStatus:'LOSE'});
+						this.io.to(table.playerTwoSocket).emit('roundStatus',{roundStatus:'WIN'});
+					}
+				}else{
+					const isPlayerOne = await tableService.isPlayerOne(socket?.request?.user?._id,table);
+					if(isPlayerOne){
+						const lines = await tableService.getLines(table.playerTwo);
+						const myHand = await tableService.getHand(table.playerTwo);
+						const isMyround = await tableService.isMyRound(table.playerTwo) || false;
+						const isGameRunning = await tableService.isGameRunning(table.playerTwo) || false;
+						this.io.to(table.playerTwoSocket).emit('sendTable',{table:lines,myHand:myHand, isMyRound: isMyround && isGameRunning});
+					}else{
+						const lines = await tableService.getLines(table.playerOne);
+						const myHand = await tableService.getHand(table.playerOne);
+						const isMyround = await tableService.isMyRound(table.playerOne) || false;
+						const isGameRunning = await tableService.isGameRunning(table.playerOne) || false;
+						this.io.to(table.playerOneSocket).emit('sendTable',{table:lines,myHand:myHand, isMyRound: isMyround && isGameRunning});
+					}
+				}
 			});
             
 			socket.on('put', async(clientData) => {
@@ -216,10 +254,10 @@ class Controller {
 							}
 							const isUserMoved = await tableService.isUserMoved(table);
 							//TODO timeout independ form state basing on data
-							// const refreshedTable = tableService.getTableById(table.id);
-							if(!isUserMoved && isPlayerOne){
+							const refreshedTable = await tableService.getTableById(table._id);
+							if(!isUserMoved && isPlayerOne && !refreshedTable.playerOnePassed){
 								this.io.to(table.playerTwoSocket).emit('roundSkipped');
-							}else if(!isUserMoved){
+							}else if(!isUserMoved && !refreshedTable.playerTwoPassed){
 								this.io.to(table.playerOneSocket).emit('roundSkipped');
 							}
 						}, this.roundTime);

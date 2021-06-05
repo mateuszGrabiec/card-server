@@ -38,5 +38,11 @@ module.exports = {
 	getUserCards: async(id)=>{
 		const result = await User.findOne({_id:id}).populate('cards');
 		return result?.cards || [];
+	},
+	updateScore: async(userId,points)=>{
+		let {score} = await User.findOne({_id:userId});
+		score = score+points;
+		score = score >0 ? score : 0;
+		await User.updateOne({_id:userId},{score:score});
 	}
 };
