@@ -8,6 +8,7 @@ const session = require('express-session');
 const hbs = require('express-handlebars');
 const {allowInsecurePrototypeAccess} = require('@handlebars/allow-prototype-access');
 const Handlebars = require('handlebars');
+const _ = require('lodash');
 
 const userService = require('./services/userService');
 const tableService = require('./services/tableService');
@@ -106,7 +107,7 @@ class Controller {
 		this.app.use(express.static(this.clientPath));
 
 		//config const variablex i.e. roundTime
-		this.roundTime = 30000;
+		this.roundTime = 32000;
 
 		// ADD card to user by id
 		//60660719b327566a8d1ee23a
@@ -154,17 +155,22 @@ class Controller {
 
 			const table = await tableService.addPlayer(socket?.request?.user,socket.id);
 
-			if(table.playerOneSocket!=null && table.playerTwoSocket!=null){
-				//HERE
+			if(!_.isEmpty(table.playerOneSocket) && !_.isEmpty(table.playerTwoSocket)){	
 				this.io.to(table.playerTwoSocket).emit('sendPlayer', {oppnentHandLength:table.playerOneHand?.length, enemyDeckId: await deckService.getCurrentDeckId(table.playerOne)});
 				this.io.to(table.playerOneSocket).emit('sendPlayer', {oppnentHandLength:table.playerTwoHand?.length, enemyDeckId: await deckService.getCurrentDeckId(table.playerTwo)});
 				
 				setTimeout(async ()=>{
 					const isUserMoved = await tableService.isUserMoved(table);
 					const refreshedTable = await tableService.getTableById(table._id);
-					if(!isUserMoved && (!refreshedTable.playerOnePassed && !refreshedTable.playerTwoPassed)){
-						const currentSocket = await tableService.getCurrentPlayerSocket(table?._id);
-						this.io.to(currentSocket).emit('roundSkipped');
+					if(table.playerTurn.toString() ==refreshedTable.playerTurn.toString()){
+						if(!isUserMoved && table.breakCounter == refreshedTable.breakCounter && table.round == refreshedTable.round){
+							const currentSocket = await tableService.getCurrentPlayerSocket(table?._id);
+							if(refreshedTable.playerOneSocket==currentSocket && !refreshedTable.playerOnePassed){
+								this.io.to(currentSocket).emit('roundSkipped');
+							}else if(refreshedTable.playerTwoSocket==currentSocket && !refreshedTable.playerTwoPassed){
+								this.io.to(currentSocket).emit('roundSkipped');
+							}
+						}
 					}
 				}, this.roundTime);
 			}
@@ -174,18 +180,13 @@ class Controller {
 				const myHand = await tableService.getHand(socket?.request?.user);
 				const isMyround = await tableService.isMyRound(socket?.request?.user) || false;
 				const isGameRunning = await tableService.isGameRunning(socket?.request?.user) || false;
-
 				socket.emit('sendTable',{table:lines,myHand:myHand, isMyRound: isMyround && isGameRunning});
-			});
-
-			socket.on('endOfGame',async()=>{
-
 			});
 
 			socket.on('endRound',async()=>{
 				const table = await tableService.getTable(socket?.request?.user);
 				let gameInfo = await tableService.passRound(socket?.request?.user);
-				console.log('gameInfo',gameInfo);
+				let runTimeOut = false;
 				if(gameInfo.sendWinInfo){
 					if(gameInfo.isDrawOfRound){
 						this.io.to(table.playerOneSocket).emit('gameStatus',{gameStatus:'DRAW'});
@@ -209,6 +210,7 @@ class Controller {
 						this.io.to(table.playerTwoSocket).emit('roundStatus',{roundStatus:'WIN'});
 					}
 				}else{
+					runTimeOut=true;
 					const isPlayerOne = await tableService.isPlayerOne(socket?.request?.user?._id,table);
 					if(isPlayerOne){
 						const lines = await tableService.getLines(table.playerTwo);
@@ -224,13 +226,30 @@ class Controller {
 						this.io.to(table.playerOneSocket).emit('sendTable',{table:lines,myHand:myHand, isMyRound: isMyround && isGameRunning});
 					}
 				}
+				if(runTimeOut){
+					setTimeout(async ()=>{
+						const isUserMoved = await tableService.isUserMoved(table);
+						const refreshedTable = await tableService.getTableById(table._id);
+						if(!isUserMoved && table.breakCounter == refreshedTable.breakCounter && table.round == refreshedTable.round){
+							const currentSocket = await tableService.getCurrentPlayerSocket(table?._id);
+							if(refreshedTable.playerOneSocket==currentSocket && !refreshedTable.playerOnePassed){
+								this.io.to(currentSocket).emit('roundSkipped');
+							}else if(refreshedTable.playerTwoSocket==currentSocket && !refreshedTable.playerTwoPassed){
+								this.io.to(currentSocket).emit('roundSkipped');
+							}
+						}
+					}, this.roundTime);
+				}
 			});
             
 			socket.on('put', async(clientData) => {
 				try{
 					let table = await tableService.getTable(socket?.request?.user);
-					if(table.playerTwoSocket && table.playerTwoSocket){
+					if(table.playerTwoSocket && table.playerTwoSocket && (!table.playerTwoPassed || !table.playerOnePassed)){
 						await tableService.putCard(clientData,socket?.request?.user);
+						const {playerOneHand,playerTwoHand} = await tableService.getTable(socket?.request?.user);
+						table.playerOneHand=playerOneHand;
+						table.playerTwoHand=playerTwoHand;
 						const isPlayerOne = await tableService.isPlayerOne(socket?.request?.user?._id,table);
 						const myHand = await tableService.getHand(socket?.request?.user._id);
 						const isMyround = await tableService.isMyRound(socket?.request?.user);
@@ -243,22 +262,21 @@ class Controller {
 							const otherPlayerLines = await tableService.getLines(table.playerOne);
 							this.io.to(table.playerOneSocket).emit('sendTable', {table:otherPlayerLines,myHand:myHand, isMyRound: isOpponentRound});
 						}
-						
 						const lines = await tableService.getLines(socket?.request?.user?._id);
 						socket.emit('sendTable',  {table:lines,myHand:myHand, isMyRound:isMyround});
 						setTimeout(async ()=>{
-							if(isPlayerOne){
-								table.playerTurn=table.playerTwo;
-							}else{
-								table.playerTurn=table.playerOne;
-							}
 							const isUserMoved = await tableService.isUserMoved(table);
-							//TODO timeout independ form state basing on data
 							const refreshedTable = await tableService.getTableById(table._id);
-							if(!isUserMoved && isPlayerOne && !refreshedTable.playerOnePassed){
-								this.io.to(table.playerTwoSocket).emit('roundSkipped');
-							}else if(!isUserMoved && !refreshedTable.playerTwoPassed){
-								this.io.to(table.playerOneSocket).emit('roundSkipped');
+							const wasPass = table.playerTwoPassed != refreshedTable.playerTwoPassed || table.playerOnePassed != table.playerOnePassed;
+							if(!wasPass){
+								if(table.breakCounter == refreshedTable.breakCounter && table.round == refreshedTable.round && !isUserMoved){
+									const currentSocket = await tableService.getCurrentPlayerSocket(table?._id);
+									if(refreshedTable.playerOneSocket==currentSocket && !refreshedTable.playerOnePassed){
+										this.io.to(currentSocket).emit('roundSkipped');
+									}else if(refreshedTable.playerTwoSocket==currentSocket && !refreshedTable.playerTwoPassed){
+										this.io.to(currentSocket).emit('roundSkipped');
+									}
+								}
 							}
 						}, this.roundTime);
 					}else{

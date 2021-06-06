@@ -185,9 +185,9 @@ let self = module.exports = {
 		let startedGame = await Table.findOne({ $or: [{ playerOne:user },{ playerTwo:user }],status:'ongoing'});
 		const isPlayerOne = await self.isPlayerOne(user._id, startedGame);
 		if(isPlayerOne){
-			startedGame = await Table.findOneAndUpdate({_id:startedGame._id},{playerOneSocket:null},{returnOriginal:false});
+			startedGame = await Table.findOneAndUpdate({_id:startedGame._id},{playerOneSocket:null,breakCounter:startedGame.breakCounter+1},{returnOriginal:false});
 		}else{
-			startedGame = await Table.findOneAndUpdate({_id:startedGame._id},{playerTwoSocket:null},{returnOriginal:false});
+			startedGame = await Table.findOneAndUpdate({_id:startedGame._id},{playerTwoSocket:null,breakCounter:startedGame.breakCounter+1},{returnOriginal:false});
 		}
 		return startedGame;
 	},
@@ -219,16 +219,16 @@ let self = module.exports = {
 	},
 
 	isUserMoved: async(table)=>{
-		//TODO check is round this same
+		//TODO check this function
 		let actualTable = await self.getTableById(table._id);
 		const isPlayerOne = self.isPlayerOne(table.playerTurn,table);
 		if(isPlayerOne && !actualTable?.playerOnePassed){
 			const oldHand = table.playerOneHand;
-			const newHand = await self.getHand(table.playerOne);
+			const newHand = await self.getHand(actualTable.playerOne);
 			return oldHand?.length > newHand?.length;
 		}else if(!actualTable?.playerTwoPassed){
 			const oldHand = table.playerTwoHand;
-			const newHand = await self.getHand(table.playerTwo);
+			const newHand = await self.getHand(actualTable.playerTwo);
 			return oldHand?.length > newHand?.length;
 		}
 	},
