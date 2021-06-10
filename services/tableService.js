@@ -118,8 +118,8 @@ let self = module.exports = {
 	updatePostionOnLine: async(line,field, deckId)=> {
 
 		line = await Promise.all(line.map(async(card,idx) => {
-			const width = 150;
-			const first = field.width / 2 - width * line.length / 2;
+			const width = 70;
+			const first = (field.width-100) / 2 - width * line.length / 2;
 			const cardId = card?.id || card._id;
 			const x = field.x + first + idx * width;
 			const y = field.y;
