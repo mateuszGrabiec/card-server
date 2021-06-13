@@ -1,6 +1,7 @@
 const User = require('../models/user');
 const moongosee = require('mongoose');
 const bcrypt = require('bcrypt');
+const userStats = require('../models/userStats');
 
 module.exports = {
 	createUser: async (user)=>{
@@ -44,5 +45,43 @@ module.exports = {
 		score = score+points;
 		score = score >0 ? score : 0;
 		await User.updateOne({_id:userId},{score:score});
+	},
+	getScores: async()=>{
+		let allUsers = await User.find({});
+		let scores = await Promise.all(allUsers.map(async (user)=>{
+			let lastGame = await userStats.find({users:{ $in:user._id}}).sort({date:-1}) || false;
+			lastGame = lastGame ? lastGame.pop() : '-';
+			if(lastGame != '-'){
+				if(lastGame?.users?.[0].toString()==user._id.toString()){
+					switch(lastGame?.status){
+					case 'p1':
+						lastGame='W';
+						break;
+					case 'p2':
+						lastGame='L';
+						break;
+					default:
+						'DRAW';
+					}
+				}else{
+					switch(lastGame?.status){
+					case 'p1':
+						lastGame='L';
+						break;
+					case 'p2':
+						lastGame='W';
+						break;
+					default:
+						'DRAW';
+					}
+				}
+			}
+			return {
+				score:user.score,
+				username: user.username,
+				lastGame:lastGame || '-'
+			};
+		})) || [];
+		return scores;
 	}
 };

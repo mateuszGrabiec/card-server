@@ -156,8 +156,8 @@ class Controller {
 			const table = await tableService.addPlayer(socket?.request?.user,socket.id);
 
 			if(!_.isEmpty(table.playerOneSocket) && !_.isEmpty(table.playerTwoSocket)){	
-				this.io.to(table.playerTwoSocket).emit('sendPlayer', {opponentHandLength:table.playerOneHand?.length, enemyDeckId: await deckService.getCurrentDeckId(table.playerOne)});
-				this.io.to(table.playerOneSocket).emit('sendPlayer', {opponentHandLength:table.playerTwoHand?.length, enemyDeckId: await deckService.getCurrentDeckId(table.playerTwo)});
+				this.io.to(table.playerTwoSocket).emit('sendPlayer', {opponentHandLength:table.playerOneHand?.length, enemyDeckId: await deckService.getCurrentDeckId(table.playerOne),round:table.round});
+				this.io.to(table.playerOneSocket).emit('sendPlayer', {opponentHandLength:table.playerTwoHand?.length, enemyDeckId: await deckService.getCurrentDeckId(table.playerTwo),round:table.round});
 				
 				setTimeout(async ()=>{
 					const isUserMoved = await tableService.isUserMoved(table);
