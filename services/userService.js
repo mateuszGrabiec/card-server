@@ -60,8 +60,11 @@ module.exports = {
 					case 'p2':
 						lastGame='L';
 						break;
+					case 'draw':
+						lastGame='DRAW';
+						break;
 					default:
-						'DRAW';
+						lastGame='-';
 					}
 				}else{
 					switch(lastGame?.status){
@@ -71,8 +74,11 @@ module.exports = {
 					case 'p2':
 						lastGame='W';
 						break;
+					case 'draw':
+						lastGame='DRAW';
+						break;
 					default:
-						'DRAW';
+						lastGame='-';
 					}
 				}
 			}
