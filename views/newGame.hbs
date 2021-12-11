@@ -77,6 +77,7 @@
 
             console.log('INITIALIZED!!!')
             self.socket.on('sendPlayer', (data) => {
+                console.log('playerSended', data)
                 const { opponentHandLength, enemyDeckId, round } = data;
                 let oponentText = document.querySelector('#opponentName');
                 oponentText.innerHTML = '';
@@ -99,6 +100,7 @@
             self.socket.on('sendTable', (data) => {
                 console.log('sendTable data', data)
                 renderEnemyCardback();
+                renderTable(data.table);
                 renderMyHand(data.myHand);
             });
 
@@ -138,18 +140,17 @@
             const svg = document.querySelector("svg");
             const svgns = "http://www.w3.org/2000/svg";
 
-            let group = document.createElementNS(svgns, "g")
-
+            let group = document.querySelector('#myHand') || document.createElementNS(svgns, "g")
+            group.innerHTML=''
             gsap.set(group, {
                 attr: { id: 'myHand' }
             });
 
             hand.forEach((card, idx) => {
-                console.log('card', card)
                 const xOrigin = 60 + 180 * idx
                 let newImage = document.createElementNS(svgns, "image");
                 gsap.set(newImage, {
-                    attr: { id: card._id, x: xOrigin, y: 905, width: 170, height: 170, href: `/assets/${card.image}`, visibility: 'visible', power: card.power }
+                    attr: { id: card._id, x: xOrigin, y: 905, width: 170, height: 170, href: `/assets/${card.image}`, visibility: 'visible', power: card.power, name: card.name, describe: card.describe }
                 });
                 const cardContext = Draggable.create(newImage, {
                     liveSnap: {
@@ -176,11 +177,57 @@
                             const offsetY = (540 - evt.target._gsap.yOrigin)
                             const offsetX = parseFloat(evt.target._gsap.x.split('px')[0])
                             TweenLite.set(evt.target, { x: offsetX, y: offsetY })
+
+                            const returnCard = {
+                                x: x,
+                                y: 540,
+                                width: 170,
+                                id: evt.target.getAttribute('id'),
+                                deckId: self.myDeck._id,
+                                power: evt.target.getAttribute('power'),
+                                buffed: false,
+                                deBuffed: false
+                            };
+                            const dataToSend = {
+                                fieldId: 3,
+                                cardName: evt.target.getAttribute('name').split(' ')[0],
+                                card: returnCard,
+                                cardId: returnCard.id,
+                                field: {
+                                    x: 60,
+                                    y: 540,
+                                    width: 1800
+                                }
+                            };
+                            self.socket.emit('put', dataToSend)
                         } else if (y > 650 && 710 < y) {
                             //second line
                             const offsetY = (715 - evt.target._gsap.yOrigin)
                             const offsetX = parseFloat(evt.target._gsap.x.split('px')[0])
                             TweenLite.set(evt.target, { x: offsetX, y: offsetY })
+
+                            const returnCard = {
+                                x: x,
+                                y: 715,
+                                width: 170,
+                                id: evt.target.getAttribute('id'),
+                                deckId: self.myDeck._id,
+                                power: evt.target.getAttribute('power'),
+                                buffed: false,
+                                deBuffed: false
+                            };
+                            const dataToSend = {
+                                fieldId: 4,
+                                cardName: evt.target.getAttribute('name').split(' ')[0],
+                                card: returnCard,
+                                cardId: returnCard.id,
+                                field: {
+                                    x: 60,
+                                    y: 715,
+                                    width: 1800
+                                }
+                            };
+                            self.socket.emit('put', dataToSend);
                         } else {
                             TweenLite.set(evt.target, { x: 0, y: 0 })
                         }
@@ -189,6 +236,30 @@
                 group.appendChild(newImage);
             });
             svg.appendChild(group)
+        }
+        function renderTable(table) {
+            const svg = document.querySelector("svg");
+            const svgns = "http://www.w3.org/2000/svg";
+            let linesY = [710, 540, 350, 180];
+            if (!table.isPlayerOne) {
+                linesY = linesY.reverse()
+            }
+            table.forEach((line, idx) => {
+                let group = document.querySelector('#line' + idx) || document.createElementNS(svgns, "g")
+                gsap.set(group, {
+                    attr: { id: 'line' + idx }
+                });
+                group.innerHTML = '';
+                line.forEach((card) => {
+                    let newImage = document.createElementNS(svgns, "image");
+                    gsap.set(newImage, {
+                        attr: { id: card._id, x: card.x, y: linesY[idx], width: 170, height: 170, href: `/assets/${card.image}`, visibility: 'visible', power: card.power, name: card.name, describe: card.describe }
+                    });
+                    group.appendChild(newImage)
+                })
+                svg.appendChild(group);
+            })
+            renderTable
         }
 
 

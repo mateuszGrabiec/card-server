@@ -182,9 +182,9 @@ class Controller {
 				const isMyround = await tableService.isMyRound(socket?.request?.user) || false;
 				const isGameRunning = await tableService.isGameRunning(socket?.request?.user) || false;
 				if(isPlayerOne){
-					socket.emit('sendTable',{table:lines,myHand:table.playerOneHand, isMyRound: isMyround && isGameRunning, opponentHandLength:table.playerTwoHand?.length});
+					socket.emit('sendTable',{table:lines,myHand:table.playerOneHand, isMyRound: isMyround && isGameRunning, opponentHandLength:table.playerTwoHand?.length,isPlayerOne:isPlayerOne});
 				}else{
-					socket.emit('sendTable',{table:lines,myHand:table.playerTwoHand, isMyRound: isMyround && isGameRunning, opponentHandLength:table.playerOneHand?.length});
+					socket.emit('sendTable',{table:lines,myHand:table.playerTwoHand, isMyRound: isMyround && isGameRunning, opponentHandLength:table.playerOneHand?.length,isPlayerOne:isPlayerOne});
 				}
 			});
 
