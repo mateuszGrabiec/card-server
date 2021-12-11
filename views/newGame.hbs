@@ -1,0 +1,197 @@
+<style>
+    body {
+        padding: 0;
+        margin: 0;
+        font-family: "Roboto", sans-serif;
+        background: #ddd;
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    #svg {
+        position: fixed;
+        left: 0%;
+        top: 0%;
+        width: 100%;
+        height: 100%;
+        max-height: 100%;
+        max-width: 100%;
+    }
+</style>
+
+<div class="content">
+    {{#if error}}
+        <div class="alert alert-danger">{{error}}</div>
+    {{/if}}
+    {{#if deck}}
+        <svg id="svg" viewBox="0 0 1920 1080" style="touch-action: none;">
+            <text x="20" y="35" class="small" id="opponentName"></text>
+            <rect width="1800" x="60" y="180" height="170" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
+            <rect width="1800" x="60" y="350" height="170" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
+            <rect width="1800" x="60" y="540" height="170" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
+            <rect width="1800" x="60" y="710" height="170" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
+        </svg>
+    {{/if}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.8.0/gsap.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.8.0/Draggable.min.js"
+        integrity="sha512-i3gZH5PXWe3Ab68C4n2ZG1lWLVbUGQHZVOH6VBzAikny0prv5fJKfxVSeBCw3J3lN7c9gUE9T97tlFOxwJtrqA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        var allcards, deck, socket, oppnentHandLength, myDeck, svg, enemyDeckId, roundNumber;
+        self = this;
+
+        //TODO renderCardback
+
+        var callback = function(successCallback, failureCallback) {
+            fetch('/decks/current', {
+                credentials: 'include'
+            }).then(res => {
+                if (res.redirected) {
+                    failureCallback();
+                } else {
+                    res.json().then(res => {
+                        if (res.body.deck === false) {
+                            window.location = '/decks?error=no_current_deck';
+                        }
+                        else {
+                            self.myDeck = res.body.deck;
+                            successCallback(self);
+                        }
+                    });
+                }
+            }).catch(err => {
+                console.log('err', err);
+                failureCallback();
+            });
+        };
+
+        function successCallback() {
+
+            self.socket = io('/', {
+                withCredentials: true
+            });
+
+            console.log('INITIALIZED!!!')
+            self.socket.on('sendPlayer', (data) => {
+                const { opponentHandLength, enemyDeckId, round } = data;
+                let oponentText = document.querySelector('#opponentName');
+                oponentText.innerHTML = '';
+                self.opponentHandLength = opponentHandLength;
+                self.enemyDeckId = enemyDeckId;
+                console.log('round \n\n\n', round);
+                self.roundNumber = round;
+                self.socket.emit('getTable');
+                //TODO implement clock
+                /*if(!self.clock.isRunning){
+                    self.socket.emit('getTable');
+                }else{
+                    self.clock.stop();
+                    self.socket.emit('getTable');
+                }*/
+            });
+
+
+
+            self.socket.on('sendTable', (data) => {
+                console.log('sendTable data', data)
+                renderEnemyCardback();
+                renderMyHand(data.myHand);
+            });
+
+        }
+
+        var failureCallback = function() {
+
+            window.location = '/';
+        };
+
+        function renderEnemyCardback() {
+            console.log('cardbacks')
+            let array = [];
+            const svg = document.querySelector("svg");
+
+            // variable for the namspace
+            const svgns = "http://www.w3.org/2000/svg";
+
+            let group = document.createElementNS(svgns, "g")
+
+            gsap.set(group, {
+                attr: { id: 'enemyHand' }
+            });
+
+            console.log('opponentHandLength', self.opponentHandLength)
+            for (let i = 0; i < self.opponentHandLength; i++) {
+                let newImage = document.createElementNS(svgns, "image");
+                gsap.set(newImage, {
+                    attr: { id: 'enemyBack' + i, x: 60 + 180 * i, y: 1, width: 170, height: 170, href: "http://localhost:3000/assets/cardback.png", visibility: 'visible' }
+                });
+                group.appendChild(newImage);
+            }
+            svg.appendChild(group);
+        }
+
+        function renderMyHand(hand) {
+            const svg = document.querySelector("svg");
+            const svgns = "http://www.w3.org/2000/svg";
+
+            let group = document.createElementNS(svgns, "g")
+
+            gsap.set(group, {
+                attr: { id: 'myHand' }
+            });
+
+            hand.forEach((card, idx) => {
+                console.log('card', card)
+                const xOrigin = 60 + 180 * idx
+                let newImage = document.createElementNS(svgns, "image");
+                gsap.set(newImage, {
+                    attr: { id: card._id, x: xOrigin, y: 905, width: 170, height: 170, href: `/assets/${card.image}`, visibility: 'visible', power: card.power }
+                });
+                const cardContext = Draggable.create(newImage, {
+                    liveSnap: {
+                        points: function(point) {
+                            //if it's within 100px, snap exactly to 500,250
+                            var dx = point.x + xOrigin;
+                            var dy = point.y + 920;
+                            //start point && max field width
+                            if ((dx < -85 || dx > 1850) || (dy < 510 || dy > 1050)) {
+                                //return start position
+                                return { x: 0, y: 0 }
+                            }
+                            return point; //otherwise don't change anything.
+                        }
+                    }
+                })[0];
+
+                cardContext.addEventListener('dragend', (evt) => {
+                    if (evt.target._gsap.x != '0px' || evt.target._gsap.y != '0px') {
+                        const x = parseFloat(evt.target._gsap.x.split('px')[0]) + evt.target._gsap.xOrigin;
+                        const y = parseFloat(evt.target._gsap.y.split('px')[0]) + evt.target._gsap.yOrigin;
+                        if (y < 651) {
+                            //first line
+                            const offsetY = (540 - evt.target._gsap.yOrigin)
+                            const offsetX = parseFloat(evt.target._gsap.x.split('px')[0])
+                            TweenLite.set(evt.target, { x: offsetX, y: offsetY })
+                        } else if (y > 650 && 710 < y) {
+                            //second line
+                            const offsetY = (715 - evt.target._gsap.yOrigin)
+                            const offsetX = parseFloat(evt.target._gsap.x.split('px')[0])
+                            TweenLite.set(evt.target, { x: offsetX, y: offsetY })
+                        } else {
+                            TweenLite.set(evt.target, { x: 0, y: 0 })
+                        }
+                    }
+                })
+                group.appendChild(newImage);
+            });
+            svg.appendChild(group)
+        }
+
+
+        window.onload = callback(successCallback, failureCallback);
+    </script>
+</div>
