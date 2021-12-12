@@ -31,6 +31,9 @@
     #whichPlayer{
         font-size: 42px;
     }
+    #myRound{
+        font-size: 42px;
+    }
     /**
  *	This element is created inside your target element
  *	It is used so that your own element will not need to be altered
@@ -93,7 +96,8 @@
     {{#if deck}}
         <svg id="svg" viewBox="0 0 1920 1080" style="touch-action: none;z-index:10;">
             <text x="60" y="75" class="small" id="opponentName">Waiting for opponent</text>
-            <text x="1800" y="75" class="small" id="whichPlayer"></text>
+            <text x="1880" y="75" class="small" id="whichPlayer"></text>
+            <text x="1880" y="175" id="myRound"></text>
             <rect width="1800" x="60" y="180" height="170" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
             <rect width="1800" x="60" y="350" height="170" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
             <rect width="1800" x="60" y="540" height="170" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
@@ -204,6 +208,8 @@
 
             self.socket.on('sendTable', (data) => {
                 self.isMyRound = data.isMyRound;
+                $('#myRound').text(self.isMyRound ? 'Play' : 'Wait');
+
                 self.opponentHandLength = data.opponentHandLength;
                 self.myHandCards = data.myHand;
                 self.player = data.isPlayerOne ? 'P1' : 'P2';
