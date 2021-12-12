@@ -281,7 +281,7 @@
             for (let i = 0; i < self.opponentHandLength; i++) {
                 let newImage = document.createElementNS(svgns, "image");
                 gsap.set(newImage, {
-                    attr: { id: 'enemyBack' + i, x: 60 + 180 * i, y: 1, width: 170, height: 170, href: "http://localhost:3000/assets/cardback.png", visibility: 'visible' }
+                    attr: { id: 'enemyBack' + i, x: 60 + 180 * i, y: 1, width: 170, height: 170, href: "/assets/cardback.png", visibility: 'visible' }
                 });
                 group.appendChild(newImage);
             }
