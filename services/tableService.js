@@ -97,7 +97,7 @@ let self = module.exports = {
 					table[fieldId] = [card];
 				}
 				table[fieldId] = _.sortBy(table[fieldId], ['x']);
-				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.deckId,card.buffed,card.deBuff);
+				table[fieldId] = await self.updatePostionOnLine(table[fieldId],clientData.field,card.buffed,card.deBuff);
 				await self.saveLines(table,fieldId);
 				await self.removeCardFromHand(cardId,isPlayerOne,table);
 				await self.switchRound(table._id);
@@ -115,7 +115,7 @@ let self = module.exports = {
 	},
 
 	// TODO: i send on put a information about if is buffed, add 10 to power and save it to line and return it to front || if debuffed is true you have to substract shield if equal or greater than 10, if lower substract power instead and save it to line card paramater
-	updatePostionOnLine: async(line,field, deckId)=> {
+	updatePostionOnLine: async(line,field)=> {
 
 		line = await Promise.all(line.map(async(card,idx) => {
 			const width = 70;
@@ -144,13 +144,11 @@ let self = module.exports = {
 				shield:card.shield,
 				onPutTrigger:card.onPutTrigger,
 				isFree:card.isFree,
-				deckId: deckId,
 				width: width,
 				skill: card.skill
 			};
 			/*card.x=x;
 			card.y=y;
-			card.deckId = deckId
 			card.width = width;
 			return card;
 			*/
@@ -321,7 +319,7 @@ let self = module.exports = {
 
 			gameInfo.sendRoundInfo = true;
 
-			let lines = self.getLinesOnly(table,true);
+			let lines = self.getLinesOnly(table,false);
 			lines = lines.map((line)=>{
 				let poweOfLine = line.map(card=>{
 					return card.power+card.shield;

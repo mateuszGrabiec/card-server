@@ -19,19 +19,88 @@
         max-height: 100%;
         max-width: 100%;
     }
-</style>
 
-<div class="content">
+    .line-decription {
+        font-size: 18px;
+        max-width: 170px;
+    }
+
+    #opponentName {
+        font-size: 42px;
+    }
+    #whichPlayer{
+        font-size: 42px;
+    }
+    /**
+ *	This element is created inside your target element
+ *	It is used so that your own element will not need to be altered
+ **/
+    .time_circles {
+        position: relative;
+        width: 100%;
+        height: 100%;
+    }
+
+    /**
+ *	This is all the elements used to house all text used
+ * in time circles
+ **/
+    .time_circles>div {
+        position: absolute;
+        text-align: center;
+    }
+
+    /**
+ *	Titles (Days, Hours, etc)
+ **/
+    .time_circles>div>h4 {
+        margin: 0;
+        padding: 0;
+        text-align: center;
+        text-transform: uppercase;
+        font-family: 'Century Gothic', Arial;
+        line-height: 1;
+    }
+
+    /**
+ *	Time numbers, ie: 12
+ **/
+    .time_circles>div>span {
+        margin: 0;
+        padding: 0;
+        display: block;
+        width: 100%;
+        text-align: center;
+        font-family: 'Century Gothic', Arial;
+        line-height: 1;
+        font-weight: bold;
+    }
+</style>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+<script type="text/javascript" src="/assets/TimeCircles.js"></script>
+
+
+<div class="content" style="width: 30%;">
+    <div style="width: 8%;z-index:-1;height:100%;position:absolute;top:10px;left:5px;">
+        <div class="example stopwatch mx-auto" data-timer="30" style="height:30%;width:100%"></div>
+    </div>
+    <div style="width: 15%;z-index:100;position:absolute;bottom:10px;left:10px;">
+        <button id="endRound" class="btn btn-info stop">END ROUND</button>
+    </div>
     {{#if error}}
         <div class="alert alert-danger">{{error}}</div>
     {{/if}}
     {{#if deck}}
-        <svg id="svg" viewBox="0 0 1920 1080" style="touch-action: none;">
-            <text x="20" y="35" class="small" id="opponentName"></text>
+        <svg id="svg" viewBox="0 0 1920 1080" style="touch-action: none;z-index:10;">
+            <text x="60" y="75" class="small" id="opponentName">Waiting for opponent</text>
+            <text x="1800" y="75" class="small" id="whichPlayer"></text>
             <rect width="1800" x="60" y="180" height="170" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
             <rect width="1800" x="60" y="350" height="170" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
             <rect width="1800" x="60" y="540" height="170" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
             <rect width="1800" x="60" y="710" height="170" style="fill:rgb(0,0,255);stroke-width:3;stroke:rgb(0,0,0)" />
+            <rect width="280" height="300" id="cardInfoContainer" x="1800" y="380" fill="white" style="display: none;">
+            </rect>
+            <g width="300" height="300" id="cardInfo" x="1750" y="450"></g>
         </svg>
     {{/if}}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.8.0/gsap.min.js">
@@ -41,24 +110,31 @@
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        var allcards, deck, socket, oppnentHandLength, myDeck, svg, enemyDeckId, roundNumber;
+        let allcards, deck, socket, oppnentHandLength, myDeck, myHandCards, svg, enemyDeckId, roundNumber;
         self = this;
+        self.myDeck = self.deck;
 
-        //TODO renderCardback
+        $(".example.stopwatch").TimeCircles({ count_past_zero: false, time: { Minutes: { show: false }, Hours: { show: false }, Days: { show: false } } })
+        .addListener(function(unit,value,total){
+            if(total==0){
+                //
+            }
+        });
 
-        var callback = function(successCallback, failureCallback) {
-            fetch('/decks/current', {
-                credentials: 'include'
-            }).then(res => {
+        $(".example.stopwatch").TimeCircles().stop()
+        $(".example.stopwatch").hide()
+
+        let callback = function(successCallback, failureCallback) {
+            fetch('https://opentdb.com/api.php?amount=1&category=23&type=boolean').then(res => {
                 if (res.redirected) {
                     failureCallback();
                 } else {
                     res.json().then(res => {
-                        if (res.body.deck === false) {
-                            window.location = '/decks?error=no_current_deck';
-                        }
-                        else {
-                            self.myDeck = res.body.deck;
+                        const{correct_answer,question} = res.results[0];
+                        const communicate = (correct_answer == "False") ? 'It is false that: ' + question : 'It is true that: ' + question;
+                        if(window.confirm(communicate)){
+                            successCallback(self);
+                        }else{
                             successCallback(self);
                         }
                     });
@@ -71,61 +147,137 @@
 
         function successCallback() {
 
+            console.log('INIT !!!')
+
             self.socket = io('/', {
                 withCredentials: true
             });
 
-            console.log('INITIALIZED!!!')
             self.socket.on('sendPlayer', (data) => {
-                console.log('playerSended', data)
                 const { opponentHandLength, enemyDeckId, round } = data;
                 let oponentText = document.querySelector('#opponentName');
                 oponentText.innerHTML = '';
                 self.opponentHandLength = opponentHandLength;
                 self.enemyDeckId = enemyDeckId;
-                console.log('round \n\n\n', round);
                 self.roundNumber = round;
                 self.socket.emit('getTable');
+                const time = $(".example.stopwatch").TimeCircles().getTime();
                 //TODO implement clock
-                /*if(!self.clock.isRunning){
+                if(time>0){
                     self.socket.emit('getTable');
                 }else{
-                    self.clock.stop();
+                    startTimer();
                     self.socket.emit('getTable');
-                }*/
+                }
             });
 
+            self.socket.on('roundStatus', (data) => {
+                let { roundStatus } = data;
+                self.socket.emit('getTable');
+                alert('Round ' + roundStatus)
+                //let confirm = window.confirm('Round ' + roundStatus);
+            });
+
+            self.socket.on('gameStatus', (data) => {
+                let { gameStatus } = data;
+                if (gameStatus === 'WIN') {
+                    window.confirm('You win!');
+                    //self.add.text(550, 490, 'You win!', { fontFamily: 'Arial', fontSize: 64, color: 'white' });
+                }
+                else if (gameStatus === 'LOSE') {
+                    window.confirm('You lose!');
+                    //self.add.text(550, 490, 'You lose!', { fontFamily: 'Arial', fontSize: 64, color: 'white' });
+                }
+                else {
+                    window.confirm('It is a draw!');
+                    //self.add.text(550, 490, 'It is a draw!', { fontFamily: 'Arial', fontSize: 64, color: 'white' });
+                }
+                window.location = '/';
+            });
+
+
+            self.socket.on('error', (error) => {
+                alert(error?.message);
+                //self.socket.emit('getTable');
+            });
 
 
             self.socket.on('sendTable', (data) => {
-                console.log('sendTable data', data)
+                self.isMyRound = data.isMyRound;
+                self.opponentHandLength = data.opponentHandLength;
+                self.myHandCards = data.myHand;
+                self.player = data.isPlayerOne ? 'P1' : 'P2';
+                $('#whichPlayer').text(self.player);
                 renderEnemyCardback();
                 renderTable(data.table);
                 renderMyHand(data.myHand);
+
+                if (self.myHandCards.length > 0) {
+                    restartTimer();
+                } else {
+                    self.socket.emit('endRound');
+                    self.socket.emit('getTable');
+                }
             });
 
+            self.socket.on('disconnect', () => {
+                let confirm = window.confirm('You were disconnected from server');
+                if (confirm == true) {
+                    window.location.reload();
+                }
+            });
+
+            self.socket.on('roundSkipped', () => {
+                if (self.myHandCards.length == 0) {
+                    self.socket.emit('endRound');
+                    self.socket.emit('getTable');
+                } else {
+                    const idx = Math.floor(Math.random() * self.myHandCards.length);
+                    const card = self.myHandCards[idx];
+                    console.log('card', card);
+                    const returnCard = {
+                        x: Math.floor(Math.random() * 1800),
+                        y: 540,
+                        width: 170,
+                        id: card._id,
+                        power: card.power,
+                        buffed: false,
+                        deBuffed: false
+                    };
+                    const dataToSend = {
+                        fieldId: (idx % 2) ? 3 : 4,
+                        cardName: card.name,
+                        card: returnCard,
+                        cardId: returnCard.id,
+                        field: {
+                            x: 60,
+                            y: (idx % 2) ? 715 : 540,
+                            width: 1800
+                        }
+                    };
+                    self.socket.emit('put', dataToSend);
+                }
+            });
         }
 
-        var failureCallback = function() {
+        let failureCallback = function() {
 
             window.location = '/';
         };
 
         function renderEnemyCardback() {
-            console.log('cardbacks')
             let array = [];
             const svg = document.querySelector("svg");
 
-            // variable for the namspace
+            // letiable for the namspace
             const svgns = "http://www.w3.org/2000/svg";
 
-            let group = document.createElementNS(svgns, "g")
-
+            let group = document.getElementById("enemyHand") || document.createElementNS(svgns, "g")
+            group.innerHTML = "";
             gsap.set(group, {
                 attr: { id: 'enemyHand' }
             });
 
-            console.log('opponentHandLength', self.opponentHandLength)
             for (let i = 0; i < self.opponentHandLength; i++) {
                 let newImage = document.createElementNS(svgns, "image");
                 gsap.set(newImage, {
@@ -141,7 +293,7 @@
             const svgns = "http://www.w3.org/2000/svg";
 
             let group = document.querySelector('#myHand') || document.createElementNS(svgns, "g")
-            group.innerHTML=''
+            group.innerHTML = ''
             gsap.set(group, {
                 attr: { id: 'myHand' }
             });
@@ -150,17 +302,21 @@
                 const xOrigin = 60 + 180 * idx
                 let newImage = document.createElementNS(svgns, "image");
                 gsap.set(newImage, {
-                    attr: { id: card._id, x: xOrigin, y: 905, width: 170, height: 170, href: `/assets/${card.image}`, visibility: 'visible', power: card.power, name: card.name, describe: card.describe }
+                    attr: { id: card._id, x: xOrigin, y: 905, width: 170, height: 170, href: `/assets/${card.image}`, visibility: 'visible', power: card.power, shield: card.shield, name: card.name, describe: card.describe }
                 });
                 const cardContext = Draggable.create(newImage, {
                     liveSnap: {
                         points: function(point) {
-                            //if it's within 100px, snap exactly to 500,250
-                            var dx = point.x + xOrigin;
-                            var dy = point.y + 920;
+                            const nameText = newImage.getAttribute('name'), powerText = newImage.getAttribute('power'), shieldText = newImage.getAttribute('shield'), describeText = newImage.getAttribute('describe');
+                            printInfo(nameText, powerText, shieldText, describeText);
+
+
+                            let dx = point.x + xOrigin;
+                            let dy = point.y + 920;
                             //start point && max field width
                             if ((dx < -85 || dx > 1850) || (dy < 510 || dy > 1050)) {
                                 //return start position
+                                clearInfo();
                                 return { x: 0, y: 0 }
                             }
                             return point; //otherwise don't change anything.
@@ -172,7 +328,11 @@
                     if (evt.target._gsap.x != '0px' || evt.target._gsap.y != '0px') {
                         const x = parseFloat(evt.target._gsap.x.split('px')[0]) + evt.target._gsap.xOrigin;
                         const y = parseFloat(evt.target._gsap.y.split('px')[0]) + evt.target._gsap.yOrigin;
-                        if (y < 651) {
+                        if (!self.isMyRound) {
+                            alert('This is not your turn');
+                            TweenLite.set(evt.target, { x: 0, y: 0 });
+                            clearInfo();
+                        } else if (y <= 700) {
                             //first line
                             const offsetY = (540 - evt.target._gsap.yOrigin)
                             const offsetX = parseFloat(evt.target._gsap.x.split('px')[0])
@@ -183,7 +343,6 @@
                                 y: 540,
                                 width: 170,
                                 id: evt.target.getAttribute('id'),
-                                deckId: self.myDeck._id,
                                 power: evt.target.getAttribute('power'),
                                 buffed: false,
                                 deBuffed: false
@@ -200,7 +359,8 @@
                                 }
                             };
                             self.socket.emit('put', dataToSend)
-                        } else if (y > 650 && 710 < y) {
+                            clearInfo();
+                        } else if (y > 650 && 700 < y) {
                             //second line
                             const offsetY = (715 - evt.target._gsap.yOrigin)
                             const offsetX = parseFloat(evt.target._gsap.x.split('px')[0])
@@ -211,7 +371,6 @@
                                 y: 715,
                                 width: 170,
                                 id: evt.target.getAttribute('id'),
-                                deckId: self.myDeck._id,
                                 power: evt.target.getAttribute('power'),
                                 buffed: false,
                                 deBuffed: false
@@ -228,8 +387,10 @@
                                 }
                             };
                             self.socket.emit('put', dataToSend);
+                            clearInfo();
                         } else {
-                            TweenLite.set(evt.target, { x: 0, y: 0 })
+                            TweenLite.set(evt.target, { x: 0, y: 0 });
+                            clearInfo();
                         }
                     }
                 })
@@ -258,9 +419,77 @@
                     group.appendChild(newImage)
                 })
                 svg.appendChild(group);
-            })
-            renderTable
+            });
         }
+
+        function printInfo(nameText, powerText, shieldText, describeText) {
+            const svg = document.querySelector("svg");
+            const svgns = "http://www.w3.org/2000/svg";
+
+            const cardInfoContainer = document.querySelector('#cardInfoContainer');
+            cardInfoContainer.style.display = "block";
+
+            const cardInfo = document.querySelector('#cardInfo');
+            cardInfo.innerHTML = '';
+
+
+            const name = document.createElementNS(svgns, "text");
+            const power = document.createElementNS(svgns, "text");
+            const shield = document.createElementNS(svgns, "text");
+            const describe = document.createElementNS(svgns, "text");
+
+            gsap.set(name, {
+                attr: { id: 'name', x: 1810, y: 400, width: 180, class: 'line-decription' }
+            });
+            name.innerHTML = nameText;
+            cardInfo.appendChild(name);
+
+            gsap.set(power, {
+                attr: { id: 'power', x: 1810, y: 440, width: 180, class: 'line-decription' }
+            });
+            power.innerHTML = 'Power: ' + powerText;
+            cardInfo.appendChild(power);
+
+            gsap.set(shield, {
+                attr: { id: 'shield', x: 1810, y: 480, width: 180, class: 'line-decription' }
+            });
+            shield.innerHTML = 'Shield: ' + shieldText;
+            cardInfo.appendChild(shield);
+
+            gsap.set(describe, {
+                attr: { id: 'describe', x: 1810, y: 520, width: 180, class: 'line-decription' }
+            });
+            describe.innerHTML = describeText;
+            cardInfo.appendChild(describe);
+        }
+
+        function clearInfo() {
+            const cardInfoContainer = document.querySelector('#cardInfoContainer');
+            cardInfoContainer.style.display = "none";
+
+            const cardInfo = document.querySelector('#cardInfo');
+            cardInfo.innerHTML = '';
+        }
+
+        function startTimer() {
+            $(".example.stopwatch").show();
+            $(".example.stopwatch").TimeCircles().start();
+        }
+
+        function stopTimer() {
+            $(".example.stopwatch").hide();
+            $(".example.stopwatch").TimeCircles().stop();
+        }
+
+        function restartTimer() {
+            $(".example.stopwatch").show();
+            $(".example.stopwatch").TimeCircles().restart();
+        }
+
+        $("#endRound").click(function(){
+            self.socket.emit('endRound');
+            self.socket.emit('getTable');
+        });
 
 
         window.onload = callback(successCallback, failureCallback);

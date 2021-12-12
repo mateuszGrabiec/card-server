@@ -160,17 +160,21 @@ class Controller {
 				this.io.to(table.playerOneSocket).emit('sendPlayer', {opponentHandLength:table.playerTwoHand?.length, enemyDeckId: await deckService.getCurrentDeckId(table.playerTwo),round:table.round});
 				
 				setTimeout(async ()=>{
-					const isUserMoved = await tableService.isUserMoved(table);
-					const refreshedTable = await tableService.getTableById(table._id);
-					if(table.playerTurn.toString() ==refreshedTable.playerTurn.toString()){
-						if(!isUserMoved && table.breakCounter == refreshedTable.breakCounter && table.round == refreshedTable.round){
-							const currentSocket = await tableService.getCurrentPlayerSocket(table?._id);
-							if(refreshedTable.playerOneSocket==currentSocket && !refreshedTable.playerOnePassed){
-								this.io.to(currentSocket).emit('roundSkipped');
-							}else if(refreshedTable.playerTwoSocket==currentSocket && !refreshedTable.playerTwoPassed){
-								this.io.to(currentSocket).emit('roundSkipped');
+					try{
+						const isUserMoved = await tableService.isUserMoved(table);
+						const refreshedTable = await tableService.getTableById(table._id);
+						if(table.playerTurn.toString() ==refreshedTable.playerTurn.toString()){
+							if(!isUserMoved && table.breakCounter == refreshedTable.breakCounter && table.round == refreshedTable.round){
+								const currentSocket = await tableService.getCurrentPlayerSocket(table?._id);
+								if(refreshedTable.playerOneSocket==currentSocket && !refreshedTable.playerOnePassed){
+									this.io.to(currentSocket).emit('roundSkipped');
+								}else if(refreshedTable.playerTwoSocket==currentSocket && !refreshedTable.playerTwoPassed){
+									this.io.to(currentSocket).emit('roundSkipped');
+								}
 							}
 						}
+					}catch(err){
+						console.log(err);
 					}
 				}, this.roundTime);
 			}
@@ -222,25 +226,29 @@ class Controller {
 						const lines = await tableService.getLines(table.playerTwo);
 						const isMyround = await tableService.isMyRound(table.playerTwo) || false;
 						const isGameRunning = await tableService.isGameRunning(table.playerTwo) || false;
-						this.io.to(table.playerTwoSocket).emit('sendTable',{table:lines,myHand:playerTwoHand, isMyRound: isMyround && isGameRunning,opponentHandLength:playerOneHand?.length});
+						this.io.to(table.playerTwoSocket).emit('sendTable',{table:lines,myHand:playerTwoHand, isMyRound: isMyround && isGameRunning,opponentHandLength:playerOneHand?.length,isPlayerOne:false});
 					}else{
 						const lines = await tableService.getLines(table.playerOne);
 						const isMyround = await tableService.isMyRound(table.playerOne) || false;
 						const isGameRunning = await tableService.isGameRunning(table.playerOne) || false;
-						this.io.to(table.playerOneSocket).emit('sendTable',{table:lines,myHand:playerOneHand, isMyRound: isMyround && isGameRunning,opponentHandLength:playerTwoHand?.length});
+						this.io.to(table.playerOneSocket).emit('sendTable',{table:lines,myHand:playerOneHand, isMyRound: isMyround && isGameRunning,opponentHandLength:playerTwoHand?.length,isPlayerOne:true});
 					}
 				}
 				if(runTimeOut){
 					setTimeout(async ()=>{
-						const isUserMoved = await tableService.isUserMoved(table);
-						const refreshedTable = await tableService.getTableById(table._id);
-						if(!isUserMoved && table.breakCounter == refreshedTable.breakCounter && table.round == refreshedTable.round){
-							const currentSocket = await tableService.getCurrentPlayerSocket(table?._id);
-							if(refreshedTable.playerOneSocket==currentSocket && !refreshedTable.playerOnePassed){
-								this.io.to(currentSocket).emit('roundSkipped');
-							}else if(refreshedTable.playerTwoSocket==currentSocket && !refreshedTable.playerTwoPassed){
-								this.io.to(currentSocket).emit('roundSkipped');
+						try{
+							const isUserMoved = await tableService.isUserMoved(table);
+							const refreshedTable = await tableService.getTableById(table._id);
+							if(!isUserMoved && table.breakCounter == refreshedTable.breakCounter && table.round == refreshedTable.round){
+								const currentSocket = await tableService.getCurrentPlayerSocket(table?._id);
+								if(refreshedTable.playerOneSocket==currentSocket && !refreshedTable.playerOnePassed){
+									this.io.to(currentSocket).emit('roundSkipped');
+								}else if(refreshedTable.playerTwoSocket==currentSocket && !refreshedTable.playerTwoPassed){
+									this.io.to(currentSocket).emit('roundSkipped');
+								}
 							}
+						}catch(err){
+							console.log(err);
 						}
 					}, this.roundTime);
 				}
@@ -258,31 +266,36 @@ class Controller {
 						const myHand = await tableService.getHand(socket?.request?.user._id);
 						const isMyround = await tableService.isMyRound(socket?.request?.user);
 						const isOpponentRound = !isMyround;
-						let opponentHandLength = 0;
 						if(isPlayerOne){
 							const otherPlayerLines = await tableService.getLines(table.playerTwo);
-							opponentHandLength = playerTwoHand?.length;
-							this.io.to(table.playerTwoSocket).emit('sendTable', {table:otherPlayerLines,myHand:playerTwoHand, isMyRound: isOpponentRound,opponentHandLength:playerOneHand?.length});
+							const opponentHandLength = playerTwoHand?.length;
+							this.io.to(table.playerTwoSocket).emit('sendTable', {table:otherPlayerLines,myHand:playerTwoHand, isMyRound: isOpponentRound,opponentHandLength:playerOneHand?.length,isPlayerOne:false});
+							const lines = await tableService.getLines(socket?.request?.user?._id);
+							this.io.to(table.playerOneSocket).emit('sendTable', {table:lines,myHand:myHand, isMyRound: !isOpponentRound,opponentHandLength:opponentHandLength,isPlayerOne:true});
 						}else{
 							const otherPlayerLines = await tableService.getLines(table.playerOne);
-							opponentHandLength = playerOneHand?.length;
-							this.io.to(table.playerOneSocket).emit('sendTable', {table:otherPlayerLines,myHand:playerOneHand, isMyRound: isOpponentRound,opponentHandLength:playerTwoHand?.length});
+							const opponentHandLength = playerOneHand?.length;
+							this.io.to(table.playerOneSocket).emit('sendTable', {table:otherPlayerLines,myHand:playerOneHand, isMyRound: isOpponentRound,opponentHandLength:playerTwoHand?.length,isPlayerOne:true});
+							const lines = await tableService.getLines(socket?.request?.user?._id);
+							this.io.to(table.playerTwoSocket).emit('sendTable', {table:lines,myHand:myHand, isMyRound: !isOpponentRound,opponentHandLength:opponentHandLength,isPlayerOne:false});
 						}
-						const lines = await tableService.getLines(socket?.request?.user?._id);
-						socket.emit('sendTable',  {table:lines,myHand:myHand, isMyRound:isMyround,opponentHandLength:opponentHandLength});
 						setTimeout(async ()=>{
-							const isUserMoved = await tableService.isUserMoved(table);
-							const refreshedTable = await tableService.getTableById(table._id);
-							const wasPass = table.playerTwoPassed != refreshedTable.playerTwoPassed || table.playerOnePassed != table.playerOnePassed;
-							if(!wasPass){
-								if(table.breakCounter == refreshedTable.breakCounter && table.round == refreshedTable.round && !isUserMoved){
-									const currentSocket = await tableService.getCurrentPlayerSocket(table?._id);
-									if(refreshedTable.playerOneSocket==currentSocket && !refreshedTable.playerOnePassed){
-										this.io.to(currentSocket).emit('roundSkipped');
-									}else if(refreshedTable.playerTwoSocket==currentSocket && !refreshedTable.playerTwoPassed){
-										this.io.to(currentSocket).emit('roundSkipped');
+							try{
+								const isUserMoved = await tableService.isUserMoved(table);
+								const refreshedTable = await tableService.getTableById(table._id);
+								const wasPass = table.playerTwoPassed != refreshedTable.playerTwoPassed || table.playerOnePassed != table.playerOnePassed;
+								if(!wasPass){
+									if(table.breakCounter == refreshedTable.breakCounter && table.round == refreshedTable.round && !isUserMoved){
+										const currentSocket = await tableService.getCurrentPlayerSocket(table?._id);
+										if(refreshedTable.playerOneSocket==currentSocket && !refreshedTable.playerOnePassed){
+											this.io.to(currentSocket).emit('roundSkipped');
+										}else if(refreshedTable.playerTwoSocket==currentSocket && !refreshedTable.playerTwoPassed){
+											this.io.to(currentSocket).emit('roundSkipped');
+										}
 									}
 								}
+							}catch(err){
+								console.log(err);
 							}
 						}, this.roundTime);
 					}else{
