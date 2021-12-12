@@ -15,14 +15,14 @@ module.exports = function(app){
 		if(isAbsolute){
 			throughDirectory(filepath,addRoute);
 		}else{
-			if (filepath === __dirname+'/index.js' || filepath?.substr(filepath?.lastIndexOf('.') + 1) !== 'js')
+			if (filepath === __dirname.replace(/\\/, '/')+'/index.js' || filepath?.substr(filepath?.lastIndexOf('.') + 1) !== 'js')
 				return;
-			var name = filepath.split(__dirname+'/')[1];
+			var name = filepath.split(__dirname.replace(/\\/, '/')+'/')[1];
 			const charToCut = name.indexOf('index.js') === -1 ? name?.length-3 :  name.indexOf('index.js');
 			const endpoint = '/'+name.slice(0,charToCut);
 			require('./' + name)(app,endpoint);
 		}
 		
 	};
-	throughDirectory(__dirname,addRoute);
+	throughDirectory(__dirname.replace(/\\/, '/'),addRoute);
 };
